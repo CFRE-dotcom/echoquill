@@ -82,8 +82,10 @@ If your PC has an NVIDIA GPU, transcription automatically uses it and is much fa
 
 ## EchoQuill Pro
 
-Coming soon: **EchoQuill Pro** — unlimited video transcriptions, an unlimited
-clipboard library (50 shown at a time), a Favorites tab, and priority support.
+Free version: unlimited dictation forever, 5 video transcriptions, your last
+10 clips. **EchoQuill Pro** (coming soon): unlimited video transcriptions, an
+unlimited clipboard library (50 shown at a time), a Favorites tab, and
+priority support.
 **$5/month or $39/year.** Dictation stays free forever in this open-source
 version. Watch this repo (⭐ Star + Watch) to be notified at launch.
 

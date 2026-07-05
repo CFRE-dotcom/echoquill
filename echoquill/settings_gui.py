@@ -416,14 +416,16 @@ class SettingsWindow:
         self.ai_prompt_text.pack(fill="x")
 
     def _build_history(self, f):
-        self._title(f, "History", "Stored only on this computer.")
+        self._title(f, "History",
+                    "Stored only on this computer. Free shows the last 10 — "
+                    "Pro keeps an unlimited library with Favorites.")
         s = historymod.today_stats()
         ttk.Label(f, font=("Segoe UI Semibold", 12), text=(
             f"Today: {s['words']} words · {s['dictations']} dictations · "
             f"~{s['minutes_saved']} min saved vs typing")).pack(anchor="w", pady=(0, 8))
         self.hist_text = theme.dark_text(f, height=14, wrap="word")
         self.hist_text.pack(fill="both", expand=True)
-        for e in historymod.entries(limit=50):
+        for e in historymod.entries(limit=10):
             self.hist_text.insert("end", f"[{e.get('date','')}]  {e.get('text','')}\n\n")
         self.hist_text.configure(state="disabled")
         ttk.Button(f, text="Clear history", command=self._clear_history).pack(pady=8)

@@ -23,7 +23,8 @@ class ClipboardWindow:
         ttk.Label(self.win, text="Recent transcriptions",
                   style="Title.TLabel").pack(anchor="w", padx=16, pady=(14, 2))
         ttk.Label(self.win, style="Dim.TLabel",
-                  text="Double-click a line to copy it to the clipboard."
+                  text="Double-click a line to copy it. Free version shows your "
+                       "last 10 — Pro keeps an unlimited library + Favorites."
                   ).pack(anchor="w", padx=16, pady=(0, 8))
 
         bar = ttk.Frame(self.win)
@@ -33,7 +34,7 @@ class ClipboardWindow:
         ttk.Button(bar, text="Copy selected", style="Accent.TButton",
                    command=self._copy).pack(side="right")
 
-        self.entries = history.entries(limit=50)
+        self.entries = history.entries(limit=10)
         self.listbox = theme.dark_listbox(self.win, activestyle="none")
         self.listbox.pack(fill="both", expand=True, padx=16)
         for e in self.entries:
