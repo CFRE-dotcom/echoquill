@@ -186,6 +186,9 @@ DEFAULTS = {
     "command_prefix": "computer",
     # Where batch video transcripts are saved
     "transcripts_dir": "",
+    # Free version: lifetime video-transcription allowance
+    "transcriptions_used": 0,
+    "transcription_limit": 5,
 }
 
 

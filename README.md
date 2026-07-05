@@ -31,7 +31,7 @@ Press one hotkey, speak, and your words appear in whatever app you're using — 
 - **Write Mode** — select text in any app, press Ctrl+Alt+W, and speak: with AI enhancement on, your instruction rewrites the selection ("make this more formal"); without AI, your words replace it.
 - **Batch video transcription** — paste many URLs, and each is transcribed one at a time and auto-saved as *video title*.txt in Documents\EchoQuill Transcriptions.
 - **Start with Windows** — one checkbox in Settings (or via the installer).
-- **Video & URL transcription** — right-click the pill → *Transcribe video / URL*: paste a YouTube (or most sites) link or pick a video/audio file on your PC and get the full transcript to copy or save. Same free local engine, nothing uploaded.
+- **Video & URL transcription** *(free version includes 5 video transcriptions; dictation and everything else is unlimited and free forever)* — right-click the pill → *Transcribe video / URL*: paste a YouTube (or most sites) link or pick a video/audio file on your PC and get the full transcript to copy or save. Same free local engine, nothing uploaded.
 
 ### Fine-tuning details
 

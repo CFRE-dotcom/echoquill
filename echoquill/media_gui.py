@@ -6,6 +6,23 @@ transcription services: the same local Whisper engine does the work.
 import os
 import tempfile
 import threading
+
+from . import config as cfgmod
+
+
+def _allowance(cfg) -> int:
+    """Transcriptions left in the free version (Pro removes this limit)."""
+    return max(0, cfg.get("transcription_limit", 5) - cfg.get("transcriptions_used", 0))
+
+
+def _use_one(cfg):
+    cfg["transcriptions_used"] = cfg.get("transcriptions_used", 0) + 1
+    cfgmod.save(cfg)
+
+
+LIMIT_MSG = ("Free version limit reached (5 video transcriptions). "
+             "EchoQuill Pro with unlimited transcriptions is coming soon — "
+             "dictation stays free forever.")
 import tkinter as tk
 from tkinter import ttk, filedialog
 
@@ -135,6 +152,9 @@ class MediaWindow:
             threading.Thread(target=self._run, args=(path, False), daemon=True).start()
 
     def _run(self, source, is_url):
+        if _allowance(self.cfg) <= 0:
+            self._set_status(LIMIT_MSG)
+            return
         try:
             self.win.after(0, lambda: self.out.delete("1.0", "end"))
             if is_url:
@@ -163,7 +183,10 @@ class MediaWindow:
                 out = base[:-4] + f" ({n}).txt"; n += 1
             with open(out, "w", encoding="utf-8") as f:
                 f.write(header + " ".join(parts).strip())
-            self._set_status(f"Done ✓ — saved automatically: {os.path.basename(out)}")
+            _use_one(self.cfg)
+            left = _allowance(self.cfg)
+            self._set_status(f"Done ✓ — saved automatically: {os.path.basename(out)}"
+                             f"  ({left} free transcription{'s' if left != 1 else ''} left)")
         except Exception as e:
             self._set_status(f"Error: {e}")
 
@@ -295,6 +318,9 @@ class BatchWindow:
         lang = None if lang in ("", "auto") else lang
         done = 0
         for i, url in enumerate(urls, 1):
+            if _allowance(self.cfg) <= 0:
+                self._log(LIMIT_MSG)
+                break
             try:
                 self._log(f"[{i}/{len(urls)}] Downloading: {url}")
                 path, title = fetch_audio_info(url, lambda s: None)
@@ -312,6 +338,7 @@ class BatchWindow:
                 with open(out, "w", encoding="utf-8") as f:
                     f.write(full)
                 done += 1
+                _use_one(self.cfg)
                 self._last_text = full
                 self._log(f"[{i}/{len(urls)}] Saved ✓  {os.path.basename(out)}")
                 preview = text if len(text) <= 600 else text[:600] + " […full text saved to file]"
