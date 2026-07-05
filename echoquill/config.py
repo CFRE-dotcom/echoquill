@@ -189,6 +189,8 @@ DEFAULTS = {
     # Free version: lifetime video-transcription allowance
     "transcriptions_used": 0,
     "transcription_limit": 5,
+    # Where the Upgrade links point (swap to your website when it's live)
+    "upgrade_url": "https://github.com/CFRE-dotcom/echoquill#echoquill-pro",
 }
 
 

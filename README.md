@@ -80,6 +80,13 @@ If your PC has an NVIDIA GPU, transcription automatically uses it and is much fa
 - No analytics, no telemetry, no accounts.
 - The only network use is the one-time model download — unless *you* enable cloud AI enhancement with your own API key.
 
+## EchoQuill Pro
+
+Coming soon: **EchoQuill Pro** — unlimited video transcriptions, an unlimited
+clipboard library (50 shown at a time), a Favorites tab, and priority support.
+**$5/month or $39/year.** Dictation stays free forever in this open-source
+version. Watch this repo (⭐ Star + Watch) to be notified at launch.
+
 ## Contributing
 
 Issues and pull requests are welcome. Please open an issue first for non-trivial changes. Keep PRs focused: one feature or fix per PR.

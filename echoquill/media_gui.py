@@ -20,9 +20,14 @@ def _use_one(cfg):
     cfgmod.save(cfg)
 
 
-LIMIT_MSG = ("Free version limit reached (5 video transcriptions). "
-             "EchoQuill Pro with unlimited transcriptions is coming soon — "
-             "dictation stays free forever.")
+LIMIT_MSG = ("Free limit reached (5 video transcriptions). Upgrade to Pro for "
+             "unlimited — only $5/month or $39/year. Dictation stays free forever.")
+
+
+def open_upgrade(cfg):
+    import webbrowser
+    webbrowser.open(cfg.get("upgrade_url",
+                    "https://github.com/CFRE-dotcom/echoquill#echoquill-pro"))
 import tkinter as tk
 from tkinter import ttk, filedialog
 
@@ -85,6 +90,8 @@ class MediaWindow:
         ttk.Button(bar, text="Open transcripts folder",
                    command=lambda: os.startfile(transcripts_dir(self.cfg))
                    ).pack(side="left")
+        ttk.Button(bar, text="⭐ Upgrade",
+                   command=lambda: open_upgrade(self.cfg)).pack(side="right")
 
         ttk.Label(self.win, text="Transcribe video / audio",
                   style="Title.TLabel").pack(anchor="w", padx=18, pady=(14, 2))
@@ -271,6 +278,8 @@ class BatchWindow:
         ttk.Button(bar, text="Copy last transcript",
                    command=self._copy_last).pack(side="left")
         ttk.Button(bar, text="Clear", command=self._clear).pack(side="left", padx=8)
+        ttk.Button(bar, text="⭐ Upgrade",
+                   command=lambda: open_upgrade(self.cfg)).pack(side="right")
         self._last_text = ""
 
         ttk.Label(self.win, text="PROGRESS", style="Section.TLabel"

@@ -52,6 +52,14 @@ class SettingsWindow:
         self.content = ttk.Frame(self.win)
         self.content.pack(side="left", fill="both", expand=True)
 
+        up = tk.Label(self.sidebar, text="⭐ Upgrade to Pro",
+                      bg=theme.SIDEBAR, fg="#ffd60a",
+                      font=("Segoe UI Semibold", 10), cursor="hand2", pady=10)
+        up.pack(side="bottom", fill="x")
+        up.bind("<Button-1>", lambda e: self._open_upgrade())
+        tk.Label(self.sidebar, text="$5/mo · $39/yr", bg=theme.SIDEBAR,
+                 fg=theme.DIM, font=("Segoe UI", 8)).pack(side="bottom")
+
         self._nav_buttons = {}
         self._frames = {}
         for name in self.SECTIONS:
@@ -565,6 +573,11 @@ class SettingsWindow:
         wrong = self.dict_list.get(sel[0]).split("   →   ")[0].strip()
         self.dictionary.remove(wrong)
         self._refresh_dict()
+
+    def _open_upgrade(self):
+        import webbrowser
+        webbrowser.open(self.cfg.get("upgrade_url",
+                        "https://github.com/CFRE-dotcom/echoquill#echoquill-pro"))
 
     def _oauth_sign_in(self):
         import threading
