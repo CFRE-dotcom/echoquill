@@ -1,0 +1,67 @@
+# Builds EchoQuill.exe and EchoQuill-Setup.exe on GitHub's free Windows
+# servers, automatically, whenever you publish a release (or run it manually
+# from the Actions tab). The finished files are attached to the release.
+
+name: Build Windows executable
+
+on:
+  push:
+    tags: ["v*"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Generate icon
+        run: python scripts/gen_icon.py
+
+      - name: Build EchoQuill.exe
+        run: >
+          pyinstaller --onefile --noconsole --name EchoQuill --icon icon.ico
+          --collect-all faster_whisper
+          --collect-all ctranslate2
+          --collect-all pystray
+          --hidden-import pyperclip
+          --hidden-import keyboard
+          --collect-all tkinterdnd2
+          --collect-all yt_dlp
+          run.py
+
+      - name: Build installer (Inno Setup)
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Upload artifacts (manual runs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: EchoQuill-windows
+          path: |
+            dist/EchoQuill.exe
+            Output/EchoQuill-Setup.exe
+
+      - name: Create release with downloads
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: EchoQuill ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/EchoQuill.exe
+            Output/EchoQuill-Setup.exe
