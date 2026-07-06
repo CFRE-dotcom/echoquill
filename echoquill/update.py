@@ -50,10 +50,26 @@ def download_and_run(url: str, status_cb=lambda s: None) -> bool:
                 f.write(chunk)
     status_cb("Updating…")
     import subprocess
+    import sys
+    args = [path, "/VERYSILENT", "/NORESTART", "/FORCECLOSEAPPLICATIONS"]
+    # per-user installs must not silently stall on an elevation prompt
+    if "appdata" in sys.executable.lower():
+        args.append("/CURRENTUSER")
     try:
-        # silent upgrade: closes the app, installs, relaunches automatically
-        subprocess.Popen([path, "/VERYSILENT", "/NORESTART",
-                          "/FORCECLOSEAPPLICATIONS"])
+        subprocess.Popen(args)
     except Exception:
         os.startfile(path)   # fall back to the visible wizard
+        return True
+    # belt & suspenders: a detached watchdog restarts EchoQuill in ~75s
+    # if the installer's own relaunch didn't (only if it's not running).
+    try:
+        exe = sys.executable
+        cmd = ('ping -n 75 127.0.0.1 >nul & '
+               'tasklist /FI "IMAGENAME eq EchoQuill.exe" 2>nul '
+               '| find /I "EchoQuill.exe" >nul '
+               f'|| start "" "{exe}"')
+        subprocess.Popen(["cmd", "/c", cmd],
+                         creationflags=0x08000008)  # no window, detached
+    except Exception:
+        pass
     return True
