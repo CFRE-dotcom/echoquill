@@ -1,103 +1,95 @@
-# EchoQuill
+<div align="center">
+
+# 🎙 EchoQuill
+
+### Speak anywhere you can type. Free. Offline. Private.
+
+**Voice dictation for Windows that keeps your voice on your computer** — powered by local Whisper AI.
+No subscription. No account. No audio ever uploaded.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0a84ff)
 ![Engine](https://img.shields.io/badge/engine-Whisper%20(local)-brightgreen)
 ![Price](https://img.shields.io/badge/price-free%20forever-success)
 
-Free, open-source, local-first voice-to-text dictation for Windows. Your voice is the echo; the quill does the writing.
+**[⬇ Download for Windows](../../releases/latest)** · **[Website](https://echo-quill.com)** · **[Report an issue](../../issues)**
 
-Press one hotkey, speak, and your words appear in whatever app you're using — email, Word, chat, browser, anywhere you can type. Everything runs on your own computer: no subscription, no account, no audio ever leaves your machine.
+*If EchoQuill saves you time, a ⭐ star helps more people find it.*
 
-## Features
+</div>
 
-- **One hotkey, any app** — default `Ctrl+Alt+Space`. Press to start, press to stop; text lands in the focused text field.
-- **Hold-to-talk mode** — or switch Activation to *hold* in Settings and just hold a key (default: Right Alt) while you speak, release to finish — like holding Option on the Mac app.
-- **Live preview** — words appear in the on-screen overlay *while you speak*, then the final cleaned text drops into your app.
-- **100% local speech recognition** — powered by [faster-whisper](https://github.com/SYSTRAN/faster-whisper), the free open-source Whisper engine. Works offline after the one-time model download.
-- **Speed settings** — pick a model size from *tiny* (near-instant) to *large-v3* (best accuracy, 99 languages).
-- **Custom dictionary** — add names, jargon, and phrases it should always get right.
-- **Learns from your corrections** — repeated fixes become dictionary entries automatically (optional).
-- **Local text cleanup** — capitalization, spacing, and sentence punctuation, fully offline.
-- **Spoken punctuation** — say "period", "comma", "new line", "new paragraph".
-- **Optional AI enhancement** — off by default. Bring your own OpenAI/Groq key, or point it at a free local LLM (Ollama, LM Studio) for smarter cleanup with zero cloud.
-- **Per-app tone** — different AI cleanup instructions per application (casual in Slack, formal in Outlook).
-- **On-screen overlay** — a small pill shows listening / transcribing status and a preview of the result.
-- **History and daily stats** — local-only log of dictations, words per day, and estimated time saved vs typing.
-- **System tray app** — start/stop, settings, and stats from the tray icon.
-- **Clips tray** — a draggable pop-up panel with your 10 most recent transcriptions; click any clip to copy it again (right-click the mic pill → Clips tray).
-- **Clipboard safety net** — every transcription is also left on the clipboard, so if text landed in the wrong place, just Ctrl+V where you meant.
-- **Command Mode** — control your PC by voice (Ctrl+Alt+C): "open chrome", "search for …", "press enter", "volume up", "lock the computer". Safe by design: only known actions run; anything else is shown back to you.
-- **Write Mode** — select text in any app, press Ctrl+Alt+W, and speak: with AI enhancement on, your instruction rewrites the selection ("make this more formal"); without AI, your words replace it.
-- **Batch video transcription** — paste many URLs, and each is transcribed one at a time and auto-saved as *video title*.txt in Documents\EchoQuill Transcriptions.
-- **Start with Windows** — one checkbox in Settings (or via the installer).
-- **Video & URL transcription** *(free version includes 5 video transcriptions; dictation and everything else is unlimited and free forever)* — right-click the pill → *Transcribe video / URL*: paste a YouTube (or most sites) link or pick a video/audio file on your PC and get the full transcript to copy or save. Same free local engine, nothing uploaded.
+---
 
-### Fine-tuning details
+## Why EchoQuill?
 
-- **Never miss the first word** — the ready-cue plays only after the microphone is actually live.
-- **Never lose the last word** — an adjustable "tail" keeps recording briefly after you stop.
-- **Microphone lock** — always use your chosen mic even if Windows switches the default.
-- **Media ducking** — other apps' audio is lowered (not paused) while you dictate, then restored.
-- **Clipboard-only mode** — if you prefer, nothing is typed for you; the text is just copied, ready to paste.
-- **Everything is optional** — all cleanup, AI, history, and cues can be switched off.
+Speaking is ~3x faster than typing. The paid dictation apps know it — and charge monthly for it, while routing your voice through their servers. EchoQuill does what they do, free and offline:
+
+| | EchoQuill | Wispr Flow | Dragon |
+|---|---|---|---|
+| Price | **Free forever** | $12+/mo | $200–700 |
+| Works offline | **Yes** | No | Partly |
+| Voice leaves your PC | **Never** | Yes | Configurable |
+| Open source | **Yes (MIT)** | No | No |
+| Voice commands | **Yes** | Limited | Yes |
+| Video/YouTube transcription | **Yes** | No | No |
+
+## What it does
+
+**🎙 Live dictation, anywhere** — press `Ctrl+Alt+Space`, talk, and your words appear live in a floating pill, then land wherever your cursor is: email, Word, browsers, chat, code editors. Prefer push-to-talk? Hold Right Alt instead.
+
+**🎧 Voice-control your PC** — say *"computer, open chrome"*, *"search for foreclosure listings"*, *"press enter"*, *"volume up"*, *"lock the computer"*. Recognition is primed with the command vocabulary, and only a fixed, safe list of actions can ever run.
+
+**✍ Rewrite anything by voice** — highlight text in any app, press `Ctrl+Alt+W`, and say *"make this more professional."* The selection is rewritten in place.
+
+**🎬 Turn videos into text** — paste a link from YouTube (including Shorts) or ~1,800 other sites, or pick any media file. Transcripts auto-save, named after the video, with title + URL on top. Batch mode chews through a whole list of URLs unattended. Search a transcript and matches report *when* they were said: `4 matches — at 02:14, 05:37, 11:02`.
+
+**📋 Clips tray** — your recent dictations in a draggable floating tray. Click a clip to paste it at your cursor, drag one into any window to drop it there, search to find old ones.
+
+**📖 A dictionary that learns** — names, jargon, and brands always come out right, and repeated corrections become dictionary entries automatically.
+
+**🤖 Optional AI polish** — plug in Anthropic Claude, OpenAI, Groq, Ollama (free, local), or Ollama Cloud for smarter cleanup — with different tone per app: casual in Slack, formal in Outlook. Off by default; your keys stay encrypted on your machine.
+
+**⬆ Updates itself** — one click in Settings → About when a new version ships.
+
+Plus: spoken punctuation, mic lock, media ducking, never-miss-the-first-word cueing, adjustable tail capture, daily/weekly/monthly stats, full data export, and a first-run tour so you're dictating in under a minute.
 
 ## Install (30 seconds)
 
-Go to the [Releases page](../../releases/latest) and download **EchoQuill-Setup.exe**, then run it — it installs to Program Files with a Start Menu shortcut, optional desktop icon, optional start-with-Windows, and a normal uninstaller. Or grab the portable **EchoQuill.exe** and run it from anywhere, no install needed.
+1. Download **EchoQuill-Setup.exe** from the [latest release](../../releases/latest)
+2. Run it (Windows may show "unrecognized app" — click *More info → Run anyway*; the entire source code is right here for inspection)
+3. Press `Ctrl+Alt+Space` and start talking
 
-> **Maintainers:** releases build themselves. Publishing a GitHub release triggers `.github/workflows/build.yml`, which compiles `EchoQuill.exe` and `EchoQuill-Setup.exe` on GitHub's free Windows servers and attaches both to the release. To build locally instead, run `build_exe.bat` (and optionally compile `installer.iss` with [Inno Setup](https://jrsoftware.org/isinfo.php)).
+Requirements: Windows 10/11 + a microphone. First dictation downloads a speech model (~140 MB) once; after that it's fully offline. NVIDIA GPU = faster, but optional.
 
-## Install from source (about 2 minutes)
+## Privacy, verifiable
 
-1. Install **Python 3.10 or newer** from [python.org/downloads](https://www.python.org/downloads/). During install, check **"Add python.exe to PATH."**
-2. Download this project (green **Code** button → **Download ZIP**) and unzip it anywhere.
-3. Double-click **`install.bat`** and wait for it to finish (one time only).
-4. Double-click **`EchoQuill.bat`** — the mic icon appears in your system tray.
-5. Click into any text field, press **Ctrl+Alt+Space**, talk (watch your words appear live in the overlay), press it again. Done. Prefer holding a key while you talk? Settings → General → Activation → hold.
+- Voice, transcripts, history, dictionary: **processed and stored only on your computer**
+- **Zero** analytics, telemetry, or tracking — read the code, it's all here
+- Network is used only for: one-time model downloads, video URLs *you* paste, update checks, and AI providers *you* enable with your own key (stored DPAPI-encrypted)
 
-The first dictation downloads the speech model (~140 MB for the default "base" model); after that it's fully offline.
-
-> **Tip:** to have it start with Windows, press `Win+R`, type `shell:startup`, and put a shortcut to `EchoQuill.bat` in that folder.
-
-## Speed / accuracy settings
-
-Open **Settings → General → Speed / accuracy** from the tray icon:
-
-| Model | Best for | Download |
-|---|---|---|
-| tiny | Fastest, quick notes | ~75 MB |
-| base | Everyday balance (default) | ~140 MB |
-| small | More accurate | ~460 MB |
-| medium | Very accurate, decent PC needed | ~1.5 GB |
-| large-v3 | Best accuracy, 99 languages | ~3 GB |
-
-If your PC has an NVIDIA GPU, transcription automatically uses it and is much faster.
-
-## Privacy
-
-- Your voice and text are processed **on your computer** and never uploaded.
-- No analytics, no telemetry, no accounts.
-- The only network use is the one-time model download — unless *you* enable cloud AI enhancement with your own API key.
+Details: [SECURITY.md](SECURITY.md)
 
 ## EchoQuill Pro
 
-Free version: unlimited dictation forever, 5 video transcriptions, your last
-10 clips. **EchoQuill Pro** (coming soon): unlimited video transcriptions, an
-unlimited clipboard library (50 shown at a time), a Favorites tab, and
-priority support.
-**$5/month or $39/year.** Dictation stays free forever in this open-source
-version. Watch this repo (⭐ Star + Watch) to be notified at launch.
+Free covers unlimited dictation forever, 5 video transcriptions, and your last 10 clips. **Pro** — unlimited video transcription, an unlimited clip library with a Favorites tab, and priority support — is coming soon at **$5/month or $39/year** at [echo-quill.com](https://echo-quill.com/#pricing). Star + Watch this repo to catch the launch.
+
+## Building from source
+
+```bash
+git clone https://github.com/CFRE-dotcom/echoquill.git
+cd echoquill
+install.bat        # one-time dependency setup (Python 3.10+)
+EchoQuill.bat      # run from source
+build_exe.bat      # or build your own EchoQuill.exe
+```
+
+Releases are compiled automatically by GitHub Actions from the tagged source — what you download is what you see here.
 
 ## Contributing
 
-Issues and pull requests are welcome. Please open an issue first for non-trivial changes. Keep PRs focused: one feature or fix per PR.
+Issues and PRs welcome. One focused change per PR; open an issue first for anything non-trivial.
 
-## License
+## License & credits
 
 [MIT](LICENSE) — free for everyone, forever.
-
-## Credits
-
-- Speech recognition: [OpenAI Whisper](https://github.com/openai/whisper) via [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
-- Inspired by [FluidVoice for macOS](https://github.com/altic-dev/FluidVoice) by the Altic team (independent project, not affiliated)
+Speech recognition: [OpenAI Whisper](https://github.com/openai/whisper) via [faster-whisper](https://github.com/SYSTRAN/faster-whisper) · Video downloads: [yt-dlp](https://github.com/yt-dlp/yt-dlp) · Inspired by [FluidVoice for macOS](https://github.com/altic-dev/FluidVoice) (independent project, not affiliated)
