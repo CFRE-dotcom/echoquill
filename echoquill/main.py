@@ -407,7 +407,7 @@ class App:
         if win is not None:
             try:
                 if win.win.winfo_exists():
-                    win.show_section(section or "General")
+                    win.show_section(section)   # None = just bring to front
                     return
             except Exception:
                 pass

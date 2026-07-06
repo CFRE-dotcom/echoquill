@@ -93,12 +93,20 @@ class SettingsWindow:
         self._snapshot = self._collect_state()
         self.win.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    def show_section(self, name):
+    def show_section(self, name=None):
         if name in self.SECTIONS:
-            self._show(name)
+            self._show(name)          # only switch tabs when explicitly asked
+        self.raise_window()
+
+    def raise_window(self):
+        """Actually bring the window to the front (Windows fights this)."""
         try:
+            self.win.deiconify()
             self.win.lift()
+            self.win.attributes("-topmost", True)
             self.win.focus_force()
+            # nudge Windows' foreground lock with a quick topmost pulse
+            self.win.after(150, lambda: self.win.attributes("-topmost", True))
         except Exception:
             pass
 
