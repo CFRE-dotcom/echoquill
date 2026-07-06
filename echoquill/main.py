@@ -133,6 +133,8 @@ class App:
         if self.cfg.get("write_mode", True):
             keyboard.add_hotkey(self.cfg.get("write_hotkey", "ctrl+alt+w"),
                                 lambda: self.events.put("toggle_write"))
+        # ESC cancels an in-progress dictation (only acts while recording)
+        keyboard.on_press_key("esc", self._esc_pressed, suppress=False)
 
     def _start_tray(self):
         threading.Thread(target=self._tray_thread, daemon=True).start()
@@ -176,6 +178,8 @@ class App:
                 ev = self.events.get_nowait()
                 if ev == "toggle":
                     self._toggle()
+                elif ev == "cancel":
+                    self._cancel_dictation()
                 elif ev == "toggle_command":
                     self._toggle(mode="command")
                 elif ev == "toggle_write":
@@ -226,6 +230,27 @@ class App:
             self.overlay.hide()
 
     # ---------- dictation ----------
+
+    def _esc_pressed(self, _e=None):
+        if self.recorder and self.recorder.recording and not self._busy:
+            self.events.put("cancel")
+
+    def _cancel_dictation(self):
+        if not (self.recorder and self.recorder.recording) or self._busy:
+            return
+        self._busy = True
+
+        def run():
+            try:
+                self.recorder.stop()      # discard the audio entirely
+            except Exception:
+                pass
+            finally:
+                self._busy = False
+                self._mode = "dictate"
+                self._write_selection = ""
+            self.events.put(("overlay", "result", "✖ Cancelled"))
+        threading.Thread(target=run, daemon=True).start()
 
     def _toggle(self, mode="dictate"):
         if self._busy:

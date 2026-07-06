@@ -482,6 +482,7 @@ class SettingsWindow:
             "4. Press Ctrl+Alt+Space again. The text lands at your cursor.\n\n"
             "TIPS\n"
             "• Say \"period\", \"comma\", \"new line\", \"new paragraph\" for punctuation.\n"
+            "• Changed your mind mid-dictation? Press ESC to cancel - nothing is typed.\n"
             "• Prefer holding a key? Settings → General → Activation → hold, then hold Right Alt while talking.\n"
             "• Wrong word repeatedly? Add it in the Dictionary tab - EchoQuill also learns from repeated corrections.\n"
             "• Every transcription is kept on the clipboard too: Ctrl+V pastes it anywhere.\n\n"
