@@ -143,12 +143,12 @@ def ai_enhance(text: str, cfg: dict) -> str:
             },
             json={
                 "model": cfg.get("ai_model", "gpt-4o-mini"),
-                # Instructions belong in the system role (community-reported fix)
                 "messages": [
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": text},
                 ],
                 "temperature": 0.2,
+                "keep_alive": "30m",   # keep local models warm (fixes 20s+ cold starts)
             },
             timeout=20,
         )
@@ -169,6 +169,6 @@ def process(text: str, cfg: dict, dictionary=None) -> str:
         text = apply_spoken_punctuation(text)
     if cfg.get("local_cleanup", True):
         text = local_cleanup(text)
-    if cfg.get("ai_enhancement", False):
+    if cfg.get("ai_enhancement", False) and cfg.get("ai_on_dictation", False):
         text = ai_enhance(text, cfg)
     return text

@@ -369,8 +369,12 @@ class SettingsWindow:
                     "via any OpenAI-compatible service — or a free local LLM "
                     "(Ollama, LM Studio) so nothing leaves your PC.")
         self.ai_var = tk.BooleanVar(value=self.cfg["ai_enhancement"])
-        ttk.Checkbutton(f, text="Enable AI enhancement",
-                        variable=self.ai_var).pack(anchor="w", pady=(0, 8))
+        ttk.Checkbutton(f, text="Enable AI enhancement (connect a provider below)",
+                        variable=self.ai_var).pack(anchor="w", pady=(0, 2))
+        self.ai_dictation_var = tk.BooleanVar(value=self.cfg.get("ai_on_dictation", False))
+        ttk.Checkbutton(f, variable=self.ai_dictation_var,
+                        text="Also format every dictation with AI (adds latency — off = instant plain text)"
+                        ).pack(anchor="w", pady=(0, 8))
 
         r = self._row(f, "Provider")
         providers = sorted(cfgmod.AI_PROVIDERS.keys())
@@ -405,19 +409,26 @@ class SettingsWindow:
         self.ai_key_var = tk.StringVar(value=self.cfg["ai_api_key"])
         ttk.Entry(r, textvariable=self.ai_key_var, width=44, show="•").pack(side="left")
 
-        r = self._row(f, "OAuth Client ID")
         self.ai_client_var = tk.StringVar(
             value=self.cfg.get("ai_oauth_client_id", ""))
-        ttk.Entry(r, textvariable=self.ai_client_var, width=44).pack(side="left")
-
-        r = self._row(f, "")
-        self.oauth_btn = ttk.Button(r, text="Sign in with your account…",
+        self._oauth_box = ttk.Frame(f)
+        oc = self._row(self._oauth_box, "OAuth Client ID")
+        ttk.Entry(oc, textvariable=self.ai_client_var, width=44).pack(side="left")
+        ob = self._row(self._oauth_box, "")
+        self.oauth_btn = ttk.Button(ob, text="Sign in with your account…",
                                     command=self._oauth_sign_in)
         self.oauth_btn.pack(side="left")
-        self.oauth_status = ttk.Label(r, text="", style="Dim.TLabel")
+        self.oauth_status = ttk.Label(ob, text="", style="Dim.TLabel")
         self.oauth_status.pack(side="left", padx=10)
         if (self.cfg.get("ai_oauth_tokens") or {}).get("access_token"):
             self.oauth_status.configure(text="Signed in ✓")
+        def _toggle_oauth(*_):
+            if self.ai_auth_var.get() == "oauth":
+                self._oauth_box.pack(fill="x", anchor="w")
+            else:
+                self._oauth_box.pack_forget()
+        _toggle_oauth()
+        auth_box.bind("<<ComboboxSelected>>", _toggle_oauth)
 
         r = self._row(f, "API base URL")
         self.ai_url_var = tk.StringVar(value=self.cfg["ai_base_url"])
@@ -858,6 +869,7 @@ class SettingsWindow:
             "dictionary_enabled": self.dict_enabled_var.get(),
             "learn_corrections": self.learn_var.get(),
             "ai_enhancement": self.ai_var.get(),
+            "ai_on_dictation": self.ai_dictation_var.get(),
             "ai_provider": self.ai_provider_var.get(),
             "ai_auth_method": self.ai_auth_var.get(),
             "ai_oauth_client_id": self.ai_client_var.get().strip(),

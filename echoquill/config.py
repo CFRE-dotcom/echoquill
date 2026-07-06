@@ -97,6 +97,13 @@ AI_PROVIDERS = {
         "key_hint": "No key needed - install from ollama.com, then `ollama pull llama3.2`. 100% on your PC.",
         "needs_key": False,
     },
+    "Z.AI (GLM)": {
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "models": sorted(["glm-4.5", "glm-4.5-air", "glm-4.6", "glm-4-plus"]),
+        "default_model": "glm-4.6",
+        "key_hint": "API key from z.ai. Type any GLM model name if newer ones exist.",
+        "needs_key": True,
+    },
     "OpenAI": {
         "oauth_auth_url": "https://auth.openai.com/oauth/authorize",
         "oauth_token_url": "https://auth.openai.com/oauth/token",
@@ -142,6 +149,7 @@ DEFAULTS = {
     "learn_corrections": True,    # suggest dictionary entries from repeated corrections
     # Optional cloud AI enhancement - OFF by default, bring your own key
     "ai_enhancement": False,
+    "ai_on_dictation": False,
     "ai_provider": "OpenAI",
     # Auth: "api_key" or "oauth" (sign in with your provider account).
     # OAuth needs a Client ID from the provider's developer program.
