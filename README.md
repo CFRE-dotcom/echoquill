@@ -42,9 +42,9 @@ Press one hotkey, speak, and your words appear in whatever app you're using — 
 - **Clipboard-only mode** — if you prefer, nothing is typed for you; the text is just copied, ready to paste.
 - **Everything is optional** — all cleanup, AI, history, and cues can be switched off.
 
-## Easiest install: download the .exe
+## Install (30 seconds)
 
-If a release is available on the [Releases page](../../releases), just download **EchoQuill-Setup.exe** and run it — it installs to Program Files with a Start Menu shortcut, optional desktop icon, optional start-with-Windows, and a normal uninstaller. Or grab the portable **EchoQuill.exe** and run it from anywhere, no install needed.
+Go to the [Releases page](../../releases/latest) and download **EchoQuill-Setup.exe**, then run it — it installs to Program Files with a Start Menu shortcut, optional desktop icon, optional start-with-Windows, and a normal uninstaller. Or grab the portable **EchoQuill.exe** and run it from anywhere, no install needed.
 
 > **Maintainers:** releases build themselves. Publishing a GitHub release triggers `.github/workflows/build.yml`, which compiles `EchoQuill.exe` and `EchoQuill-Setup.exe` on GitHub's free Windows servers and attaches both to the release. To build locally instead, run `build_exe.bat` (and optionally compile `installer.iss` with [Inno Setup](https://jrsoftware.org/isinfo.php)).
 

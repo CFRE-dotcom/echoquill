@@ -44,9 +44,9 @@ class SettingsWindow:
                  ).pack(anchor="w", padx=18, pady=(18, 14))
 
         # save bar first (bottom) so the content area can never push it off
-        bar = ttk.Frame(self.win)
-        bar.pack(side="bottom", fill="x")
-        ttk.Button(bar, text="Save changes", style="Accent.TButton",
+        self._save_bar = ttk.Frame(self.win)
+        self._save_bar.pack(side="bottom", fill="x")
+        ttk.Button(self._save_bar, text="Save changes", style="Accent.TButton",
                    command=self._save).pack(side="right", padx=16, pady=10)
 
         self.content = ttk.Frame(self.win)
@@ -99,7 +99,14 @@ class SettingsWindow:
 
     # ---------- navigation ----------
 
+    # only these tabs have anything to save
+    SAVE_SECTIONS = {"General", "Dictation", "Dictionary", "AI Enhancement"}
+
     def _show(self, name):
+        if name in self.SAVE_SECTIONS:
+            self._save_bar.pack(side="bottom", fill="x")
+        else:
+            self._save_bar.pack_forget()
         for n, b in self._nav_buttons.items():
             active = (n == name)
             b.configure(bg=theme.PANEL if active else theme.SIDEBAR,
