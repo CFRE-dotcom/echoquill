@@ -5,7 +5,7 @@
 ; building dist\EchoQuill.exe with build_exe.bat.
 
 #define AppName "EchoQuill"
-#define AppVersion "1.13.1"
+#define AppVersion "1.13.2"
 #define AppExe "EchoQuill.exe"
 
 [Setup]
@@ -22,7 +22,7 @@ SolidCompression=yes
 PrivilegesRequiredOverridesAllowed=dialog
 
 [Files]
-Source: "dist\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\EchoQuill\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
