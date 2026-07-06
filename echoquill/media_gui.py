@@ -20,6 +20,33 @@ def _use_one(cfg):
     cfgmod.save(cfg)
 
 
+def normalize_url(u: str) -> str:
+    """Fix what paste drags in: whitespace, quotes, angle brackets, and a
+    missing https:// (why Shorts links sometimes needed several tries)."""
+    u = (u or "").strip().strip('\'"<>').strip()
+    u = u.replace(" ", "")
+    if u and "://" not in u and "." in u:
+        u = "https://" + u
+    return u
+
+
+def _keep_awake(on: bool):
+    """Stop Windows sleeping mid-transcription (long videos, batches)."""
+    try:
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED if on else ES_CONTINUOUS)
+    except Exception:
+        pass
+
+
+def fmt_time(sec: float) -> str:
+    sec = int(sec or 0)
+    h, m, s2 = sec // 3600, (sec % 3600) // 60, sec % 60
+    return f"{h}:{m:02d}:{s2:02d}" if h else f"{m:02d}:{s2:02d}"
+
+
 LIMIT_MSG = ("Free limit reached (5 video transcriptions). Upgrade to Pro for "
              "unlimited — only $5/month or $39/year. Dictation stays free forever.")
 
@@ -147,7 +174,8 @@ class MediaWindow:
         BatchWindow(self.win, self.transcriber, self.cfg)
 
     def _go_url(self):
-        url = self.url_var.get().strip()
+        url = normalize_url(self.url_var.get())
+        self.url_var.set(url)
         if url:
             threading.Thread(target=self._run, args=(url, True), daemon=True).start()
 
@@ -176,11 +204,16 @@ class MediaWindow:
             lang = self.cfg.get("language", "auto")
             lang = None if lang in ("", "auto") else lang
             parts = []
+            self._seg_map = []          # (char_start, char_end, seconds)
+            pos = len(header)
+            _keep_awake(True)
             with self.transcriber._lock:
                 segments, _info = model.transcribe(path, language=lang, vad_filter=True)
                 for seg in segments:
                     t = seg.text.strip()
                     parts.append(t)
+                    self._seg_map.append((pos, pos + len(t) + 1, seg.start))
+                    pos += len(t) + 1
                     self._append(t + " ")
             # auto-save, named after the (cleaned) video title
             folder = transcripts_dir(self.cfg)
@@ -223,7 +256,24 @@ class MediaWindow:
                 self.out.see(idx)
             idx = end
             count += 1
-        self.search_count.configure(text=f"{count} match{'es' if count != 1 else ''}")
+        times = []
+        if count and getattr(self, "_seg_map", None):
+            i2 = "1.0"
+            while len(times) < 5:
+                i2 = self.out.search(term, i2, nocase=True, stopindex="end")
+                if not i2:
+                    break
+                off = int(self.out.count("1.0", i2, "chars")[0])
+                t = self._time_at(off)
+                if t is not None:
+                    ts = fmt_time(t)
+                    if ts not in times:
+                        times.append(ts)
+                i2 = f"{i2}+{len(term)}c"
+        label = f"{count} match{'es' if count != 1 else ''}"
+        if times:
+            label += " — at " + ", ".join(times)
+        self.search_count.configure(text=label)
 
     def _copy(self):
         try:
@@ -315,7 +365,7 @@ class BatchWindow:
             pass
 
     def _start(self):
-        urls = [u.strip() for u in self.urls.get("1.0", "end").splitlines()
+        urls = [normalize_url(u) for u in self.urls.get("1.0", "end").splitlines()
                 if u.strip()]
         if not urls:
             return
@@ -323,6 +373,7 @@ class BatchWindow:
         threading.Thread(target=self._run, args=(urls,), daemon=True).start()
 
     def _run(self, urls):
+        _keep_awake(True)
         lang = self.cfg.get("language", "auto")
         lang = None if lang in ("", "auto") else lang
         done = 0
@@ -354,5 +405,6 @@ class BatchWindow:
                 self._log("    " + preview + "\n")
             except Exception as e:
                 self._log(f"[{i}/{len(urls)}] FAILED: {e}")
+        _keep_awake(False)
         self._log(f"Batch finished — {done}/{len(urls)} saved to {self.folder}")
         self.win.after(0, lambda: self.start_btn.configure(state="normal"))

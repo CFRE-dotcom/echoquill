@@ -172,6 +172,7 @@ DEFAULTS = {
     "history_max_entries": 5000,
     # Overlay
     "overlay_enabled": True,
+    "auto_check_updates": True,
     # Start EchoQuill automatically with Windows (in-app toggle)
     "autostart": False,
     # Command Mode: control the PC by voice ("open chrome", "press enter"...)

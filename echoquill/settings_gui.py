@@ -19,13 +19,14 @@ class SettingsWindow:
 
     def __init__(self, root: tk.Tk, cfg: dict, dictionary, on_save,
                  on_media=None, on_clips=None, on_history=None,
-                 initial_section=None):
+                 on_quit=None, initial_section=None):
         self.cfg = cfg
         self.dictionary = dictionary
         self.on_save = on_save
         self.on_media = on_media
         self.on_clips = on_clips
         self.on_history = on_history
+        self.on_quit = on_quit
 
         self.win = tk.Toplevel(root)
         self.win.title("EchoQuill Settings")
@@ -416,6 +417,19 @@ class SettingsWindow:
         _provider_changed(first=True)
         pv.bind("<<ComboboxSelected>>", _provider_changed)
 
+        ttk.Label(f, text="PER-APP TONE", style="Section.TLabel"
+                  ).pack(anchor="w", pady=(12, 4))
+        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+            "Different apps, different voice: casual in Slack, formal in "
+            "Outlook. Add the program name and the extra instruction."
+            )).pack(anchor="w")
+        self.tone_list = theme.dark_listbox(f, height=4)
+        self.tone_list.pack(fill="x", pady=4)
+        self._refresh_tones()
+        tb = ttk.Frame(f); tb.pack(anchor="w", pady=(0, 6))
+        ttk.Button(tb, text="Add…", command=self._tone_add).pack(side="left", padx=2)
+        ttk.Button(tb, text="Remove selected", command=self._tone_remove).pack(side="left", padx=2)
+
         ttk.Label(f, text="CLEANUP INSTRUCTIONS", style="Section.TLabel"
                   ).pack(anchor="w", pady=(12, 4))
         self.ai_prompt_text = theme.dark_text(f, height=5, wrap="word")
@@ -435,7 +449,10 @@ class SettingsWindow:
         for e in historymod.entries(limit=10):
             self.hist_text.insert("end", f"[{e.get('date','')}]  {e.get('text','')}\n\n")
         self.hist_text.configure(state="disabled")
-        ttk.Button(f, text="Clear history", command=self._clear_history).pack(pady=8)
+        hb = ttk.Frame(f); hb.pack(pady=8)
+        ttk.Button(hb, text="Export everything (zip)…",
+                   command=self._export_all).pack(side="left", padx=4)
+        ttk.Button(hb, text="Clear history", command=self._clear_history).pack(side="left", padx=4)
 
     HELP_TOPICS = {
         "Dictation": (
@@ -548,6 +565,11 @@ class SettingsWindow:
         self._title(f, "About")
         ttk.Label(f, text=f"EchoQuill v{__version__}",
                   font=("Segoe UI Semibold", 12)).pack(anchor="w")
+        ub = ttk.Frame(f); ub.pack(anchor="w", pady=8)
+        ttk.Button(ub, text="Check for updates", style="Accent.TButton",
+                   command=self._check_updates).pack(side="left")
+        self.update_status = ttk.Label(ub, text="", style="Dim.TLabel")
+        self.update_status.pack(side="left", padx=10)
         ttk.Label(f, style="Dim.TLabel", wraplength=480, justify="left", text=(
             "\nFree, open-source, local-first dictation for Windows.\n\n"
             "Your voice never leaves this computer unless you enable a cloud "
@@ -583,6 +605,30 @@ class SettingsWindow:
         self.dictionary.remove(wrong)
         self._refresh_dict()
 
+    def _check_updates(self):
+        import threading
+
+        def status(msg):
+            self.win.after(0, lambda: self.update_status.configure(text=msg))
+
+        def run():
+            try:
+                from . import update
+                status("Checking…")
+                found = update.check()
+                if not found:
+                    status("You're on the latest version ✓")
+                    return
+                ver, url = found
+                status(f"v{ver} available — downloading…")
+                update.download_and_run(url, status)
+                status("Installer launched — EchoQuill will close.")
+                if self.on_quit:
+                    self.win.after(1500, self.on_quit)
+            except Exception as e:
+                status(f"Update check failed: {e}")
+        threading.Thread(target=run, daemon=True).start()
+
     def _open_upgrade(self):
         import webbrowser
         webbrowser.open(self.cfg.get("upgrade_url",
@@ -609,6 +655,62 @@ class SettingsWindow:
             except Exception as e:
                 status(f"{e}")
         threading.Thread(target=run, daemon=True).start()
+
+    def _refresh_tones(self):
+        self.tone_list.delete(0, "end")
+        for app, prompt in sorted(self.cfg.get("per_app_prompts", {}).items()):
+            shown = prompt if len(prompt) <= 60 else prompt[:57] + "…"
+            self.tone_list.insert("end", f"  {app}   →   {shown}")
+
+    def _tone_add(self):
+        app = simpledialog.askstring(
+            "Per-app tone", "Program file name (e.g. slack.exe, outlook.exe, winword.exe):",
+            parent=self.win)
+        if not app:
+            return
+        prompt = simpledialog.askstring(
+            "Per-app tone", f"Extra instruction when dictating into {app}:",
+            parent=self.win)
+        if not prompt:
+            return
+        tones = dict(self.cfg.get("per_app_prompts", {}))
+        tones[app.strip().lower()] = prompt.strip()
+        self.cfg["per_app_prompts"] = tones
+        cfgmod.save(self.cfg)
+        self._refresh_tones()
+
+    def _tone_remove(self):
+        sel = self.tone_list.curselection()
+        if not sel:
+            return
+        app = self.tone_list.get(sel[0]).split("   →   ")[0].strip()
+        tones = dict(self.cfg.get("per_app_prompts", {}))
+        tones.pop(app, None)
+        self.cfg["per_app_prompts"] = tones
+        cfgmod.save(self.cfg)
+        self._refresh_tones()
+
+    def _export_all(self):
+        from tkinter import filedialog
+        import zipfile, os
+        path = filedialog.asksaveasfilename(
+            parent=self.win, defaultextension=".zip",
+            initialfile="echoquill-export.zip", filetypes=[("Zip", "*.zip")])
+        if not path:
+            return
+        from . import history as h
+        from .media_gui import transcripts_dir
+        with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+            try:
+                zf.write(h.HISTORY_PATH, "history.jsonl")
+            except Exception:
+                pass
+            tdir = transcripts_dir(self.cfg)
+            for name in os.listdir(tdir):
+                fp = os.path.join(tdir, name)
+                if os.path.isfile(fp):
+                    zf.write(fp, os.path.join("transcripts", name))
+        messagebox.showinfo("Export", "Everything exported ✓", parent=self.win)
 
     def _clear_history(self):
         if messagebox.askyesno("Clear history", "Delete all local dictation history?",

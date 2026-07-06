@@ -66,7 +66,27 @@ class App:
         # Warm the model in the background so the first dictation is fast
         threading.Thread(target=self._warm_model, daemon=True).start()
 
+        # First run: friendly welcome instead of silence
+        from . import onboarding
+        self.root.after(800, lambda: onboarding.maybe_show(self.root, self.cfg))
+
+        # Quiet update check shortly after startup
+        if self.cfg.get("auto_check_updates", True):
+            threading.Thread(target=self._startup_update_check, daemon=True).start()
+
     # ---------- setup ----------
+
+    def _startup_update_check(self):
+        try:
+            time.sleep(6)
+            from . import update
+            found = update.check()
+            if found:
+                ver, _url = found
+                self.events.put(("overlay", "result",
+                                 f"⬆ EchoQuill v{ver} is out — Settings → About → Check for updates"))
+        except Exception:
+            pass
 
     def _warm_model(self):
         try:
@@ -389,6 +409,7 @@ class App:
             on_media=lambda: self.events.put("media"),
             on_clips=lambda: self.events.put("clips"),
             on_history=lambda: self.events.put("history"),
+            on_quit=lambda: self.events.put("quit"),
             initial_section=section)
 
     def _on_settings_saved(self, cfg):
