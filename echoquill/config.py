@@ -52,67 +52,73 @@ PREVIEW_IDS = {v: k for k, v in PREVIEW_LABELS.items()}
 # Model lists are starting points - the model box stays editable for new ones.
 AI_PROVIDERS = {
     "Anthropic (Claude)": {
+        "oauth_auth_url": "", "oauth_token_url": "",
         "base_url": "https://api.anthropic.com/v1",
-        "models": sorted([
-            "claude-fable-5", "claude-haiku-4-5", "claude-opus-4-8",
-            "claude-sonnet-5",
-        ]),
+        "models": ["claude-fable-5 (thinking)", "claude-haiku-4-5",
+                   "claude-opus-4-8 (thinking)", "claude-sonnet-5"],
         "default_model": "claude-haiku-4-5",
-        "key_hint": "Get a key at console.anthropic.com → API keys",
+        "key_hint": "Key from console.anthropic.com. Haiku is fastest; Opus/Fable think (slower).",
         "needs_key": True,
     },
     "Custom / other": {
-        "base_url": "",
-        "models": [],
-        "default_model": "",
-        "key_hint": "Any OpenAI-compatible service: enter its base URL, key, and model",
+        "base_url": "", "models": [], "default_model": "",
+        "key_hint": "Any OpenAI-compatible service: enter base URL, key, and model.",
         "needs_key": True,
     },
-    "Groq (fast & cheap)": {
+    "DeepSeek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "models": ["deepseek-v4-flash", "deepseek-v4-pro (thinking)"],
+        "default_model": "deepseek-v4-flash",
+        "key_hint": "Key from platform.deepseek.com. Flash is fast; Pro thinks.",
+        "needs_key": True,
+    },
+    "Groq (fast)": {
         "base_url": "https://api.groq.com/openai/v1",
-        "models": sorted([
-            "gemma2-9b-it", "llama-3.1-8b-instant", "llama-3.3-70b-versatile",
-            "qwen-2.5-32b",
-        ]),
-        "default_model": "llama-3.1-8b-instant",
-        "key_hint": "Free tier available at console.groq.com",
-        "needs_key": True,
-    },
-    "Ollama Cloud": {
-        "base_url": "https://ollama.com/v1",
-        "models": sorted([
-            "deepseek-v3.1:671b", "gpt-oss:120b", "gpt-oss:20b",
-            "qwen3-coder:480b",
-        ]),
-        "default_model": "gpt-oss:20b",
-        "key_hint": "API key from ollama.com → settings. Runs Ollama's biggest models in their cloud.",
+        "models": ["gpt-oss-120b", "gpt-oss-20b", "llama-3.3-70b-versatile",
+                   "qwen3-32b (thinking)"],
+        "default_model": "gpt-oss-20b",
+        "key_hint": "Free tier at console.groq.com. Blazing fast (900+ tokens/sec).",
         "needs_key": True,
     },
     "Ollama (local, free)": {
         "base_url": "http://localhost:11434/v1",
-        "models": sorted([
-            "gemma3", "llama3.2", "mistral", "phi4", "qwen2.5",
-        ]),
-        "default_model": "llama3.2",
-        "key_hint": "No key needed - install from ollama.com, then `ollama pull llama3.2`. 100% on your PC.",
+        "models": ["gemma4", "gpt-oss", "llama3.3", "qwen3.5"],
+        "default_model": "qwen3.5",
+        "key_hint": "No key. Install from ollama.com, then e.g. `ollama pull qwen3.5`. Runs on your PC.",
         "needs_key": False,
     },
-    "Z.AI (GLM)": {
-        "base_url": "https://api.z.ai/api/paas/v4",
-        "models": sorted(["glm-4.5", "glm-4.5-air", "glm-4.6", "glm-4-plus"]),
-        "default_model": "glm-4.6",
-        "key_hint": "API key from z.ai. Type any GLM model name if newer ones exist.",
+    "Ollama Cloud": {
+        "base_url": "https://ollama.com/v1",
+        "models": ["deepseek-v4-flash", "deepseek-v4-pro (thinking)",
+                   "gemini-3-flash-preview", "glm-5.2 (thinking)",
+                   "gpt-oss", "kimi-k2.7-code (thinking)", "qwen3.5",
+                   "qwen3-coder"],
+        "default_model": "gemini-3-flash-preview",
+        "key_hint": "Key from ollama.com. Flash/gpt-oss/qwen are fast; glm/deepseek/kimi think (slower, smarter).",
         "needs_key": True,
     },
     "OpenAI": {
         "oauth_auth_url": "https://auth.openai.com/oauth/authorize",
         "oauth_token_url": "https://auth.openai.com/oauth/token",
         "base_url": "https://api.openai.com/v1",
-        "models": sorted([
-            "gpt-4.1", "gpt-4.1-mini", "gpt-4o", "gpt-4o-mini", "o3-mini",
-        ]),
-        "default_model": "gpt-4o-mini",
-        "key_hint": "Get a key at platform.openai.com → API keys",
+        "models": ["gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.5 (thinking)",
+                   "gpt-5.5-pro (thinking)"],
+        "default_model": "gpt-5.4-mini",
+        "key_hint": "Key from platform.openai.com. Mini/nano are fast; 5.5 thinks.",
+        "needs_key": True,
+    },
+    "Qwen": {
+        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "models": ["qwen3.5", "qwen3.7-max", "qwen3.7-plus", "qwen3-coder"],
+        "default_model": "qwen3.5",
+        "key_hint": "Key from Alibaba DashScope. qwen3.5 is a fast all-rounder.",
+        "needs_key": True,
+    },
+    "Z.AI (GLM)": {
+        "base_url": "https://api.z.ai/api/paas/v4",
+        "models": ["glm-4.7", "glm-5.1 (thinking)", "glm-5.2 (thinking)"],
+        "default_model": "glm-4.7",
+        "key_hint": "Key from z.ai. 5.1/5.2 think (slower, smarter); 4.7 is faster.",
         "needs_key": True,
     },
 }
@@ -248,6 +254,11 @@ def _decrypt_key(key: str) -> str:
         return _dpapi(base64.b64decode(key[6:]), True).decode("utf-8")
     except Exception:
         return ""
+
+
+def api_model(name: str) -> str:
+    """Drop the human-friendly ' (thinking)' tag before sending to the API."""
+    return (name or "").split(" (")[0].strip()
 
 
 def load() -> dict:
