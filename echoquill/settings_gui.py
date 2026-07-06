@@ -373,7 +373,7 @@ class SettingsWindow:
                         variable=self.ai_var).pack(anchor="w", pady=(0, 2))
         self.ai_dictation_var = tk.BooleanVar(value=self.cfg.get("ai_on_dictation", False))
         ttk.Checkbutton(f, variable=self.ai_dictation_var,
-                        text="Also format every dictation with AI (adds latency — off = instant plain text)"
+                        text="Format dictation with AI (off = instant plain text)"
                         ).pack(anchor="w", pady=(0, 8))
 
         r = self._row(f, "Provider")
