@@ -54,6 +54,43 @@ def local_cleanup(text: str) -> str:
     return text
 
 
+# Sensible built-in tones - active only when AI Enhancement is on, and the
+# user's own per-app entries always win over these.
+DEFAULT_TONES = {
+    "outlook.exe": "This is an email: professional, courteous tone.",
+    "thunderbird.exe": "This is an email: professional, courteous tone.",
+    "winword.exe": "Formal written-document style.",
+    "slack.exe": "Casual team-chat tone; brief; lowercase is fine.",
+    "discord.exe": "Casual chat tone.",
+    "teams.exe": "Professional but conversational chat tone.",
+    "ms-teams.exe": "Professional but conversational chat tone.",
+    "notepad.exe": "Plain notes: keep wording as spoken, lightly cleaned.",
+}
+BROWSERS = {"chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe"}
+EMAIL_TITLE_WORDS = ("gmail", "outlook", "mail", "compose")
+
+
+def get_foreground_title() -> str:
+    try:
+        import ctypes
+        hwnd = ctypes.windll.user32.GetForegroundWindow()
+        buf = ctypes.create_unicode_buffer(256)
+        ctypes.windll.user32.GetWindowTextW(hwnd, buf, 256)
+        return buf.value.lower()
+    except Exception:
+        return ""
+
+
+def auto_tone(app_name: str) -> str:
+    """Recognize the writing context automatically (email vs chat vs doc)."""
+    if app_name in BROWSERS:
+        title = get_foreground_title()
+        if any(w in title for w in EMAIL_TITLE_WORDS):
+            return "This is an email: professional, courteous tone."
+        return ""
+    return DEFAULT_TONES.get(app_name, "")
+
+
 def get_foreground_app() -> str:
     """Name of the focused app's process (e.g. 'slack.exe'), for per-app tone."""
     try:
@@ -82,6 +119,8 @@ def ai_enhance(text: str, cfg: dict) -> str:
     # Per-app tone, matching the Mac app's adaptive-tone feature
     app_name = get_foreground_app()
     extra = cfg.get("per_app_prompts", {}).get(app_name, "")
+    if not extra:
+        extra = auto_tone(app_name)   # built-in smart context recognition
     if extra:
         prompt += " " + extra
     try:

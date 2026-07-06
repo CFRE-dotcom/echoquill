@@ -190,6 +190,7 @@ class MediaWindow:
         if _allowance(self.cfg) <= 0:
             self._set_status(LIMIT_MSG)
             return
+        path = None
         try:
             self.win.after(0, lambda: self.out.delete("1.0", "end"))
             if is_url:
@@ -229,6 +230,17 @@ class MediaWindow:
                              f"  ({left} free transcription{'s' if left != 1 else ''} left)")
         except Exception as e:
             self._set_status(f"Error: {e}")
+        finally:
+            _keep_awake(False)
+            if is_url and path:
+                import shutil
+                shutil.rmtree(os.path.dirname(path), ignore_errors=True)
+
+    def _time_at(self, char_offset: int):
+        for start, end, sec in getattr(self, "_seg_map", []):
+            if start <= char_offset < end:
+                return sec
+        return None
 
     def _clear(self):
         self.out.delete("1.0", "end")
@@ -399,6 +411,8 @@ class BatchWindow:
                     f.write(full)
                 done += 1
                 _use_one(self.cfg)
+                import shutil
+                shutil.rmtree(os.path.dirname(path), ignore_errors=True)
                 self._last_text = full
                 self._log(f"[{i}/{len(urls)}] Saved ✓  {os.path.basename(out)}")
                 preview = text if len(text) <= 600 else text[:600] + " […full text saved to file]"

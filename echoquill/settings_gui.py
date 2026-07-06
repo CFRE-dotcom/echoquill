@@ -90,6 +90,8 @@ class SettingsWindow:
 
         self._show(initial_section if initial_section in self.SECTIONS
                    else "General")
+        self._snapshot = self._collect_state()
+        self.win.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def show_section(self, name):
         if name in self.SECTIONS:
@@ -768,6 +770,44 @@ class SettingsWindow:
         if messagebox.askyesno("Clear history", "Delete all local dictation history?",
                                parent=self.win):
             historymod.clear()
+
+    _STATE_VARS = ["hotkey_var","actmode_var","holdkey_var","insert_var",
+        "always_copy_var","overlay_var","autostart_var","cmdmode_var",
+        "cmdkey_var","writemode_var","writekey_var","model_var","preview_var",
+        "lang_var","mic_var","livepreview_var","start_cue_var","end_cue_var",
+        "duck_var","local_cleanup_var","spoken_punct_var","tail_var",
+        "dict_enabled_var","learn_var","ai_var","ai_provider_var",
+        "ai_auth_var","ai_client_var","ai_url_var","ai_key_var","ai_model_var"]
+
+    def _collect_state(self):
+        vals = []
+        for name in self._STATE_VARS:
+            v = getattr(self, name, None)
+            try:
+                vals.append(v.get() if v is not None else None)
+            except Exception:
+                vals.append(None)
+        try:
+            vals.append(self.ai_prompt_text.get("1.0", "end"))
+        except Exception:
+            vals.append("")
+        return tuple(vals)
+
+    def _on_close(self):
+        try:
+            dirty = self._collect_state() != self._snapshot
+        except Exception:
+            dirty = False
+        if dirty:
+            ans = messagebox.askyesnocancel(
+                "EchoQuill", "You changed some settings.\nSave them?",
+                parent=self.win)
+            if ans is None:
+                return          # cancel: stay open
+            if ans:
+                self._save()    # saves and closes
+                return
+        self.win.destroy()
 
     def _save(self):
         mic = self.mic_var.get()
