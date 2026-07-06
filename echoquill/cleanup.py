@@ -150,7 +150,7 @@ def ai_enhance(text: str, cfg: dict) -> str:
                 "temperature": 0.2,
                 "keep_alive": "30m",   # keep local models warm (fixes 20s+ cold starts)
             },
-            timeout=20,
+            timeout=6,
         )
         resp.raise_for_status()
         out = resp.json()["choices"][0]["message"]["content"].strip()
