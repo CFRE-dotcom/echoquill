@@ -57,14 +57,23 @@ def local_cleanup(text: str) -> str:
 # Sensible built-in tones - active only when AI Enhancement is on, and the
 # user's own per-app entries always win over these.
 DEFAULT_TONES = {
-    "outlook.exe": "This is an email: professional, courteous tone.",
-    "thunderbird.exe": "This is an email: professional, courteous tone.",
-    "winword.exe": "Formal written-document style.",
-    "slack.exe": "Casual team-chat tone; brief; lowercase is fine.",
-    "discord.exe": "Casual chat tone.",
-    "teams.exe": "Professional but conversational chat tone.",
-    "ms-teams.exe": "Professional but conversational chat tone.",
-    "notepad.exe": "Plain notes: keep wording as spoken, lightly cleaned.",
+    "outlook.exe": ("Format as an email: greeting on its own line if one was "
+                    "spoken, short paragraphs, sign-off on its own line if "
+                    "spoken. Use only what was said."),
+    "thunderbird.exe": ("Format as an email: greeting line, paragraphs, "
+                        "sign-off — only from what was spoken."),
+    "winword.exe": ("Format as a document: clear paragraphs; use bullet "
+                    "points when items or facts are listed."),
+    "slack.exe": "Format as a chat message: tight, minimal.",
+    "discord.exe": "Format as a chat message: tight, minimal.",
+    "teams.exe": "Format as a chat message: concise paragraphs.",
+    "ms-teams.exe": "Format as a chat message: concise paragraphs.",
+    "notepad.exe": ("Format as notes: each distinct fact, number, or data "
+                    "point becomes its own bullet line."),
+    "onenote.exe": ("Format as notes: bullet each distinct fact or data "
+                    "point."),
+    "obsidian.exe": ("Format as notes: bullet each distinct fact or data "
+                     "point."),
 }
 BROWSERS = {"chrome.exe", "msedge.exe", "firefox.exe", "brave.exe", "opera.exe"}
 EMAIL_TITLE_WORDS = ("gmail", "outlook", "mail", "compose")
@@ -86,7 +95,8 @@ def auto_tone(app_name: str) -> str:
     if app_name in BROWSERS:
         title = get_foreground_title()
         if any(w in title for w in EMAIL_TITLE_WORDS):
-            return "This is an email: professional, courteous tone."
+            return ("Format as an email: greeting line if spoken, short "
+                    "paragraphs, sign-off if spoken. Use only what was said.")
         return ""
     return DEFAULT_TONES.get(app_name, "")
 

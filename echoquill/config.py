@@ -155,9 +155,13 @@ DEFAULTS = {
     "ai_api_key": "",
     "ai_model": "gpt-4o-mini",
     "ai_prompt": (
-        "You clean up dictated text. Fix punctuation, capitalization, and "
-        "obvious dictation stumbles. Keep the meaning and wording; do not add content. "
-        "Return only the cleaned text."
+        "You format dictated speech into properly structured text. Fix "
+        "punctuation, capitalization, and dictation stumbles. Structure it: "
+        "break into paragraphs where natural; when the speaker lists items, "
+        "facts, or data points, format them as bullet points; when they "
+        "dictate an email (greeting, body, sign-off), lay it out as one. "
+        "Never invent content, names, or facts that were not spoken. "
+        "Return only the formatted text."
     ),
     # Per-app tone profiles: map process name -> extra prompt
     "per_app_prompts": {
