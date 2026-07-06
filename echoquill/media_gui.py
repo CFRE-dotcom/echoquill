@@ -186,6 +186,13 @@ class MediaWindow:
         if path:
             threading.Thread(target=self._run, args=(path, False), daemon=True).start()
 
+    def _engine(self):
+        """Own transcription engine per window so it never blocks dictation."""
+        if not hasattr(self, "_own_engine"):
+            from .transcriber import Transcriber
+            self._own_engine = Transcriber(self.cfg.get("model", "base"))
+        return self._own_engine
+
     def _run(self, source, is_url):
         if _allowance(self.cfg) <= 0:
             self._set_status(LIMIT_MSG)
@@ -201,14 +208,15 @@ class MediaWindow:
             header = f"{title}\n{source}\n\n"
             self._append(header)
             self._set_status("Transcribing… (long videos take a while)")
-            model = self.transcriber.load()
+            eng = self._engine()
+            model = eng.load()
             lang = self.cfg.get("language", "auto")
             lang = None if lang in ("", "auto") else lang
             parts = []
             self._seg_map = []          # (char_start, char_end, seconds)
             pos = len(header)
             _keep_awake(True)
-            with self.transcriber._lock:
+            with eng._lock:
                 segments, _info = model.transcribe(path, language=lang, vad_filter=True)
                 for seg in segments:
                     t = seg.text.strip()

@@ -121,7 +121,7 @@ def ai_enhance(text: str, cfg: dict) -> str:
         from . import oauth, config as _cfgmod
         api_key = oauth.get_access_token(cfg, save_cb=_cfgmod.save)
     else:
-        api_key = cfg.get("ai_api_key", "")
+        api_key = (cfg.get("ai_api_key", "") or "").strip()
     base_url = cfg.get("ai_base_url", "").rstrip("/")
     if not base_url:
         return text
