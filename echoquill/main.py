@@ -66,6 +66,14 @@ class App:
         # Warm the model in the background so the first dictation is fast
         threading.Thread(target=self._warm_model, daemon=True).start()
 
+        # Heal the auto-start entry (points at wherever THIS copy lives)
+        if self.cfg.get("autostart"):
+            try:
+                from . import autostart
+                autostart.set_autostart(True)
+            except Exception:
+                pass
+
         # First run: friendly welcome instead of silence
         from . import onboarding
         self.root.after(800, lambda: onboarding.maybe_show(self.root, self.cfg))

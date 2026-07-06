@@ -5,7 +5,7 @@
 ; building dist\EchoQuill.exe with build_exe.bat.
 
 #define AppName "EchoQuill"
-#define AppVersion "1.13.2"
+#define AppVersion "1.13.3"
 #define AppExe "EchoQuill.exe"
 
 [Setup]
@@ -20,6 +20,10 @@ OutputBaseFilename=EchoQuill-Setup
 Compression=lzma2
 SolidCompression=yes
 PrivilegesRequiredOverridesAllowed=dialog
+; upgrades install over the old version silently - no manual uninstall
+CloseApplications=force
+RestartApplications=no
+AppMutex=EchoQuill_SingleInstance
 
 [Files]
 Source: "dist\EchoQuill\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -40,5 +44,50 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; \
   ValueType: string; ValueName: "EchoQuill"; ValueData: """{app}\{#AppExe}"""; \
   Flags: uninsdeletevalue; Tasks: startup
 
+[InstallDelete]
+; stale shortcuts from older versions
+Type: files; Name: "{autodesktop}\EchoQuill.lnk"
+; leftover single-file exe from pre-1.13.2 layouts
+Type: files; Name: "{app}\EchoQuill.exe"
+
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Launch EchoQuill now"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "taskkill.exe"; Parameters: "/F /IM EchoQuill.exe"; Flags: runhidden; RunOnceId: "KillEchoQuill"
+
+[Code]
+var ResultCode: Integer;
+
+procedure CleanOldTempUnpacks();
+var
+  FindRec: TFindRec;
+  TempDir: string;
+begin
+  { old single-file builds unpacked into Temp\_MEIxxxx - sweep them all }
+  TempDir := ExpandConstant('{localappdata}') + '\Temp';
+  if FindFirst(TempDir + '\_MEI*', FindRec) then begin
+    try
+      repeat
+        if FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0 then
+          DelTree(TempDir + '\' + FindRec.Name, True, True, True);
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then begin
+    { make sure no copy is running, old or new }
+    Exec('taskkill.exe', '/F /IM EchoQuill.exe', '', SW_HIDE,
+         ewWaitUntilTerminated, ResultCode);
+    CleanOldTempUnpacks();
+    { clear stale auto-start entries pointing at dead locations;
+      the app rewrites the correct one on launch if enabled }
+    RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run',
+                   'EchoQuill');
+  end;
+end;
