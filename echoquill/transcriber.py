@@ -34,6 +34,25 @@ class Transcriber:
                 self.model_size = model_size
                 self._model = None  # reload lazily with the new size
 
+    def transcribe_command(self, audio: np.ndarray, vocab_hint: str) -> str:
+        """Tuned for short spoken commands: primes the model with the actual
+        command vocabulary and uses beam search (cheap on 1-3s of audio).
+        This is what makes "open chrome" land reliably."""
+        if audio is None or len(audio) < 1600:
+            return ""
+        model = self.load()
+        with self._lock:
+            segments, _info = model.transcribe(
+                audio,
+                language="en",
+                initial_prompt=vocab_hint,
+                beam_size=5,
+                temperature=0.0,
+                vad_filter=True,
+                condition_on_previous_text=False,
+            )
+            return " ".join(seg.text.strip() for seg in segments).strip()
+
     def transcribe(self, audio: np.ndarray, language: str = "auto") -> str:
         if audio is None or len(audio) < 1600:  # <0.1s of audio
             return ""

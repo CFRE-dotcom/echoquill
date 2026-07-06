@@ -52,6 +52,30 @@ KEY_COMMANDS = {
 }
 
 
+WEB_ALIASES = {
+    "youtube": "https://www.youtube.com",
+    "gmail": "https://mail.google.com",
+    "google": "https://www.google.com",
+    "google maps": "https://maps.google.com",
+    "maps": "https://maps.google.com",
+    "amazon": "https://www.amazon.com",
+    "facebook": "https://www.facebook.com",
+    "twitter": "https://x.com", "x": "https://x.com",
+    "reddit": "https://www.reddit.com",
+    "zillow": "https://www.zillow.com",
+    "linkedin": "https://www.linkedin.com",
+}
+
+
+def vocab_hint() -> str:
+    """Fed to the speech model so it EXPECTS command words - the single
+    biggest accuracy boost for short phrases like 'open chrome'."""
+    apps = ", ".join(sorted(set(APP_ALIASES.keys()) | set(WEB_ALIASES.keys())))
+    acts = ", ".join(sorted(KEY_COMMANDS.keys()))
+    return (f"Voice command. Examples: open {apps}. "
+            f"Or: {acts}, lock the computer, search for something, go to a website.")
+
+
 SINGLE_WORD = {
     "minimize": "minimize window", "maximize": "maximize window",
     "screenshot": "take a screenshot", "fullscreen": "full screen",
@@ -91,6 +115,9 @@ def execute(text: str) -> str:
                 return f"Opening {name}"
             except Exception as e:
                 return f"Couldn't open {name}: {e}"
+        if name in WEB_ALIASES:
+            webbrowser.open(WEB_ALIASES[name])
+            return f"Opening {name}"
         if re.match(r"^[\w.-]+\.(com|org|net|io|gov|edu|co|dev)(/\S*)?$", name):
             webbrowser.open("https://" + name)
             return f"Opening {name}"
@@ -146,6 +173,11 @@ def execute(text: str) -> str:
     for phrase in KEY_COMMANDS:
         if set(phrase.split()) <= cmd_words:
             return _run_keys(phrase)
+
+    # bare site name: just saying "youtube" opens it
+    if cmd in WEB_ALIASES:
+        webbrowser.open(WEB_ALIASES[cmd])
+        return f"Opening {cmd}"
 
     # bare app name: just saying "chrome" opens it
     if cmd in APP_ALIASES:

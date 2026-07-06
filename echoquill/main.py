@@ -306,9 +306,10 @@ class App:
         try:
             audio = self.recorder.stop()
             duration = time.time() - self._record_started_at
-            raw = self.transcriber.transcribe(audio, self.cfg["language"])
             if self._mode == "command":
                 from . import commands
+                raw = self.transcriber.transcribe_command(
+                    audio, commands.vocab_hint())
                 feedback = commands.execute(raw)
                 self.events.put(("overlay", "result", "🎧  " + feedback))
                 return
@@ -320,6 +321,7 @@ class App:
                 feedback = commands.execute(rest)
                 self.events.put(("overlay", "result", "🎧  " + feedback))
                 return
+            raw = self.transcriber.transcribe(audio, self.cfg["language"])
             if self._mode == "write":
                 self._finish_write(raw)
                 return
