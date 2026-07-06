@@ -5,7 +5,7 @@
 ; building dist\EchoQuill.exe with build_exe.bat.
 
 #define AppName "EchoQuill"
-#define AppVersion "1.13.5"
+#define AppVersion "1.13.6"
 #define AppExe "EchoQuill.exe"
 
 [Setup]
@@ -59,14 +59,13 @@ Filename: "taskkill.exe"; Parameters: "/F /IM EchoQuill.exe"; Flags: runhidden; 
 [Code]
 var ResultCode: Integer;
 
-procedure CleanOldTempUnpacks();
+procedure SweepTempPattern(const Pattern: string);
 var
   FindRec: TFindRec;
   TempDir: string;
 begin
-  { old single-file builds unpacked into Temp\_MEIxxxx - sweep them all }
   TempDir := ExpandConstant('{localappdata}') + '\Temp';
-  if FindFirst(TempDir + '\_MEI*', FindRec) then begin
+  if FindFirst(TempDir + '\' + Pattern, FindRec) then begin
     try
       repeat
         if FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY <> 0 then
@@ -76,6 +75,12 @@ begin
       FindClose(FindRec);
     end;
   end;
+end;
+
+procedure CleanOldTempUnpacks();
+begin
+  SweepTempPattern('_MEI*');        { old single-file unpacks }
+  SweepTempPattern('echoquill_*');  { leftover downloaded audio }
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
