@@ -30,8 +30,17 @@ Speaking is ~3x faster than typing. The paid dictation apps know it — and char
 | Works offline | **Yes** | No | Partly |
 | Voice leaves your PC | **Never** | Yes | Configurable |
 | Open source | **Yes (MIT)** | No | No |
-| Voice commands | **Yes** | Limited | Yes |
+| Live words while you speak | **Yes** | Yes | Yes |
+| Voice-control your PC ("open chrome", "volume up") | **Yes** | No | Yes |
+| Rewrite selected text by voice | **Yes** | Yes | Limited |
 | Video/YouTube transcription | **Yes** | No | No |
+| Batch: transcribe a whole list of URLs | **Yes** | No | No |
+| Timestamped transcript search | **Yes** | No | No |
+| Clipboard manager with drag & drop | **Yes** | No | No |
+| Dictionary that learns your corrections | **Yes** | Yes | Yes |
+| Per-app tone (casual in Slack, formal in Outlook) | **Yes** | Yes | No |
+| Choose your AI (Claude, OpenAI, Groq, free local Ollama) | **Yes** | No | No |
+| One-click self-update | **Yes** | Yes | Yes |
 
 ## What it does
 

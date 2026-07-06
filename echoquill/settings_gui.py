@@ -15,7 +15,7 @@ from . import theme
 class SettingsWindow:
     SECTIONS = ["General", "Dictation", "Transcription", "Clipboard",
                 "Dictionary", "AI Enhancement", "Stats", "History",
-                "Help", "About"]
+                "Help", "Feedback", "About"]
 
     def __init__(self, root: tk.Tk, cfg: dict, dictionary, on_save,
                  on_media=None, on_clips=None, on_history=None,
@@ -80,6 +80,7 @@ class SettingsWindow:
                 "Stats": self._build_stats,
                 "History": self._build_history,
                 "Help": self._build_help,
+                "Feedback": self._build_feedback,
                 "About": self._build_about}
         for name, builder in body.items():
             sc = theme.Scrollable(self.content)
@@ -559,6 +560,53 @@ class SettingsWindow:
                        command=lambda t=topic: show(t)).grid(
                 row=i // 3, column=i % 3, padx=4, pady=4, sticky="w")
         show("Dictation")
+
+    FEEDBACK_URL = "https://formspree.io/f/mrewjrjr"
+
+    def _build_feedback(self, f):
+        self._title(f, "Feedback",
+                    "Idea? Problem? Tell us — this goes straight to the developer.")
+        ttk.Label(f, text="Your message").pack(anchor="w")
+        self.fb_text = theme.dark_text(f, height=8, wrap="word")
+        self.fb_text.pack(fill="x", pady=(4, 10))
+        r = ttk.Frame(f); r.pack(fill="x")
+        ttk.Label(r, text="Your email (optional, for a reply):").pack(side="left")
+        self.fb_email = tk.StringVar()
+        ttk.Entry(r, textvariable=self.fb_email, width=32).pack(side="left", padx=8)
+        r2 = ttk.Frame(f); r2.pack(anchor="w", pady=10)
+        ttk.Button(r2, text="Send feedback", style="Accent.TButton",
+                   command=self._send_feedback).pack(side="left")
+        self.fb_status = ttk.Label(r2, text="", style="Dim.TLabel")
+        self.fb_status.pack(side="left", padx=10)
+        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+            "Nothing else is sent — just what you type here. Developers can "
+            "also open an issue on GitHub (Help → About → GitHub).")).pack(anchor="w")
+
+    def _send_feedback(self):
+        import threading
+        msg = self.fb_text.get("1.0", "end").strip()
+        if not msg:
+            self.fb_status.configure(text="Write something first :)")
+            return
+
+        def run():
+            def status(t):
+                self.win.after(0, lambda: self.fb_status.configure(text=t))
+            try:
+                import requests
+                from . import __version__
+                status("Sending…")
+                r = requests.post(self.FEEDBACK_URL, data={
+                    "message": msg,
+                    "email": self.fb_email.get().strip(),
+                    "_subject": f"EchoQuill feedback (v{__version__})",
+                }, headers={"Accept": "application/json"}, timeout=15)
+                r.raise_for_status()
+                status("Sent — thank you! 💙")
+                self.win.after(0, lambda: self.fb_text.delete("1.0", "end"))
+            except Exception:
+                status("Couldn't send — check your internet and try again.")
+        threading.Thread(target=run, daemon=True).start()
 
     def _build_about(self, f):
         from . import __version__
