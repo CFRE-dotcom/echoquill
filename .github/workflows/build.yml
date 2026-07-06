@@ -46,6 +46,24 @@ jobs:
       - name: Package portable zip
         run: Compress-Archive -Path dist/EchoQuill -DestinationPath EchoQuill-portable-win64.zip
 
+      # Code signing - activates automatically once the four AZURE_* secrets
+      # exist in repo Settings → Secrets. Until then this step is skipped.
+      - name: Sign EchoQuill.exe (Azure Trusted Signing)
+        if: ${{ vars.SIGNING_ENABLED == 'true' }}
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder: dist/EchoQuill
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
       - name: Build installer (Inno Setup)
         run: |
           choco install innosetup --no-progress -y
@@ -58,6 +76,22 @@ jobs:
           path: |
             EchoQuill-portable-win64.zip
             Output/EchoQuill-Setup.exe
+
+      - name: Sign the installer too
+        if: ${{ vars.SIGNING_ENABLED == 'true' }}
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder: Output
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
 
       - name: Create release with downloads
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
