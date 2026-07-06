@@ -312,7 +312,20 @@ class App:
         except Exception:
             pass
 
+    def _maybe_warn_elevated(self):
+        if self.cfg.get("admin_mode"):
+            return
+        try:
+            from . import elevation
+            if not elevation.is_self_elevated() and elevation.foreground_is_elevated():
+                self.events.put(("overlay", "result",
+                    "\u26a0 That app runs as administrator \u2014 turn on "
+                    "Admin mode in Settings \u2192 General"))
+        except Exception:
+            pass
+
     def _begin(self):
+        self._maybe_warn_elevated()
         self.recorder = Recorder(
             preferred_mic=self.cfg["preferred_mic"],
             tail_ms=self.cfg["tail_ms"],

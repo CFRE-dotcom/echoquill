@@ -177,6 +177,7 @@ DEFAULTS = {
     # Overlay
     "overlay_enabled": True,
     "auto_check_updates": True,
+    "admin_mode": False,
     # Start EchoQuill automatically with Windows (in-app toggle)
     "autostart": False,
     # Command Mode: control the PC by voice ("open chrome", "press enter"...)

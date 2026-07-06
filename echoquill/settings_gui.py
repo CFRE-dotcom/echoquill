@@ -180,6 +180,17 @@ class SettingsWindow:
         ttk.Checkbutton(f, text="Start EchoQuill automatically when Windows starts",
                         variable=self.autostart_var).pack(anchor="w", pady=2)
 
+        self.adminmode_var = tk.BooleanVar(value=self.cfg.get("admin_mode", False))
+        ttk.Checkbutton(f, variable=self.adminmode_var,
+                        text="Administrator mode — type into apps that run as administrator"
+                        ).pack(anchor="w", pady=(6, 0))
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
+            "Some programs run with administrator rights, and Windows blocks "
+            "normal apps from typing into them. If your dictated words won't "
+            "appear in a specific program, turn this on. Enabling asks for a "
+            "one-time Windows approval; leave it off unless you need it.")
+            ).pack(anchor="w")
+
         ttk.Frame(f, height=8).pack()
         ttk.Label(f, text="VOICE MODES", style="Section.TLabel").pack(anchor="w", pady=(4, 4))
 
@@ -828,6 +839,7 @@ class SettingsWindow:
             "always_copy": self.always_copy_var.get(),
             "overlay_enabled": self.overlay_var.get(),
             "autostart": self.autostart_var.get(),
+            "admin_mode": self.adminmode_var.get(),
             "command_mode": self.cmdmode_var.get(),
             "command_hotkey": self.cmdkey_var.get().strip() or "ctrl+alt+c",
             "write_mode": self.writemode_var.get(),
@@ -855,7 +867,11 @@ class SettingsWindow:
             "ai_prompt": self.ai_prompt_text.get("1.0", "end").strip(),
         })
         cfgmod.save(self.cfg)
-        from . import autostart
+        from . import autostart, elevation
         autostart.set_autostart(self.cfg["autostart"])
+        if self.cfg.get("admin_mode"):
+            elevation.enable()
+        else:
+            elevation.disable()
         self.on_save(self.cfg)
         self.win.destroy()
