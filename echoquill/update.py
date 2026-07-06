@@ -48,6 +48,12 @@ def download_and_run(url: str, status_cb=lambda s: None) -> bool:
         with open(path, "wb") as f:
             for chunk in r.iter_content(chunk_size=1 << 16):
                 f.write(chunk)
-    status_cb("Starting installer…")
-    os.startfile(path)
+    status_cb("Updating…")
+    import subprocess
+    try:
+        # silent upgrade: closes the app, installs, relaunches automatically
+        subprocess.Popen([path, "/VERYSILENT", "/NORESTART",
+                          "/FORCECLOSEAPPLICATIONS"])
+    except Exception:
+        os.startfile(path)   # fall back to the visible wizard
     return True

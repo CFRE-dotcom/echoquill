@@ -341,6 +341,7 @@ class App:
                 feedback = commands.execute(raw)
                 self.events.put(("overlay", "result", "🎧  " + feedback))
                 return
+            raw = self.transcriber.transcribe(audio, self.cfg["language"])
             prefix = self.cfg.get("command_prefix", "computer")
             if (self.cfg.get("prefix_commands", True) and prefix
                     and raw.strip().lower().startswith(prefix.lower())):
@@ -349,7 +350,6 @@ class App:
                 feedback = commands.execute(rest)
                 self.events.put(("overlay", "result", "🎧  " + feedback))
                 return
-            raw = self.transcriber.transcribe(audio, self.cfg["language"])
             if self._mode == "write":
                 self._finish_write(raw)
                 return

@@ -30,8 +30,8 @@ class SettingsWindow:
 
         self.win = tk.Toplevel(root)
         self.win.title("EchoQuill Settings")
-        self.win.geometry("820x600")
-        self.win.minsize(720, 520)
+        self.win.geometry("880x620")
+        self.win.minsize(760, 540)
         self.win.attributes("-topmost", True)
         theme.apply(self.win)
 
@@ -44,14 +44,15 @@ class SettingsWindow:
                  fg=theme.FG, font=("Segoe UI Semibold", 14)
                  ).pack(anchor="w", padx=18, pady=(18, 14))
 
-        # save bar first (bottom) so the content area can never push it off
-        self._save_bar = ttk.Frame(self.win)
+        # everything right of the sidebar: content on top, save bar below it
+        right = ttk.Frame(self.win)
+        right.pack(side="left", fill="both", expand=True)
+        self._save_bar = ttk.Frame(right)
         self._save_bar.pack(side="bottom", fill="x")
         ttk.Button(self._save_bar, text="Save changes", style="Accent.TButton",
                    command=self._save).pack(side="right", padx=16, pady=10)
-
-        self.content = ttk.Frame(self.win)
-        self.content.pack(side="left", fill="both", expand=True)
+        self.content = ttk.Frame(right)
+        self.content.pack(side="top", fill="both", expand=True)
 
         up = tk.Label(self.sidebar, text="⭐ Upgrade to Pro",
                       bg=theme.SIDEBAR, fg="#ffd60a",
@@ -121,7 +122,7 @@ class SettingsWindow:
         ttk.Label(parent, text=text, style="Title.TLabel").pack(anchor="w")
         if sub:
             ttk.Label(parent, text=sub, style="Dim.TLabel",
-                      wraplength=480).pack(anchor="w", pady=(2, 0))
+                      wraplength=460).pack(anchor="w", pady=(2, 0))
         ttk.Frame(parent, height=12).pack()
 
     def _row(self, parent, label):
@@ -139,7 +140,7 @@ class SettingsWindow:
         self.actmode_var = tk.StringVar(value=self.cfg.get("activation_mode", "toggle"))
         ttk.Combobox(r, textvariable=self.actmode_var, width=24, state="readonly",
                      values=["toggle", "hold"]).pack(side="left")
-        ttk.Label(f, style="Dim.TLabel", wraplength=480, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "toggle: press the hotkey to start, again to stop · "
             "hold: keep the hold-key pressed while you talk")).pack(anchor="w")
 
@@ -185,7 +186,7 @@ class SettingsWindow:
                         variable=self.writemode_var).pack(side="left")
         self.writekey_var = tk.StringVar(value=self.cfg.get("write_hotkey", "ctrl+alt+w"))
         ttk.Entry(r, textvariable=self.writekey_var, width=14).pack(side="left", padx=6)
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             'Command Mode examples: "open chrome", "search for tax deadlines", '
             '"press enter", "volume up", "lock the computer". Write Mode with AI '
             "enhancement rewrites your selection; without AI it replaces the "
@@ -202,7 +203,7 @@ class SettingsWindow:
         cb = ttk.Combobox(r, textvariable=self.model_var, width=42, state="readonly",
                           values=list(cfgmod.MODEL_LABELS.values()))
         cb.pack(side="left")
-        self.model_hint = ttk.Label(f, style="Dim.TLabel", wraplength=500)
+        self.model_hint = ttk.Label(f, style="Dim.TLabel", wraplength=460)
         self.model_hint.pack(anchor="w")
 
         def _model_hint(*_):
@@ -220,7 +221,7 @@ class SettingsWindow:
         self.preview_var = tk.StringVar(value=cur_p)
         ttk.Combobox(r, textvariable=self.preview_var, width=42, state="readonly",
                      values=list(cfgmod.PREVIEW_LABELS.values())).pack(side="left")
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "Controls only the words shown while you're still talking. "
             "Your final text always uses the Dictation quality model above."
             )).pack(anchor="w")
@@ -272,7 +273,7 @@ class SettingsWindow:
     def _build_transcription(self, f):
         self._title(f, "Transcription",
                     "Turn videos and audio into text — one at a time or in bulk.")
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "Paste a URL (YouTube and most sites) or pick a file from this PC. "
             "Batch mode takes a whole list of URLs, transcribes them one by "
             "one, and auto-saves each as its video title in "
@@ -280,14 +281,14 @@ class SettingsWindow:
         if self.on_media:
             ttk.Button(f, text="Open the transcriber", style="Accent.TButton",
                        command=self.on_media).pack(anchor="w")
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "\nTip: it's also one right-click away — right-click the mic pill "
             "→ Transcribe video / URL.")).pack(anchor="w")
 
     def _build_clipboard(self, f):
         self._title(f, "Clipboard",
                     "Your recent transcriptions, always within reach.")
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "Every transcription is kept on the clipboard automatically, and "
             "the Clips tray shows your 10 most recent — drag it anywhere on "
             "screen, click a clip to copy it, drag a clip into another app, "
@@ -298,7 +299,7 @@ class SettingsWindow:
         if self.on_history:
             ttk.Button(f, text="Browse all recent transcriptions…",
                        command=self.on_history).pack(anchor="w", pady=8)
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "Tip: both are also on the mic pill's right-click menu.")).pack(anchor="w")
 
     def _build_stats(self, f):
@@ -316,7 +317,7 @@ class SettingsWindow:
             ttk.Label(grid, text=f"{v['words']:,}").grid(row=r, column=1, sticky="w")
             ttk.Label(grid, text=f"{v['dictations']:,}").grid(row=r, column=2, sticky="w")
             ttk.Label(grid, text=f"~{v['minutes_saved']} min").grid(row=r, column=3, sticky="w")
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "\nBased on ~40 words/min typing vs ~150 words/min speaking. "
             "All stats live only on this computer.")).pack(anchor="w")
 
@@ -357,7 +358,7 @@ class SettingsWindow:
         pv = ttk.Combobox(r, textvariable=self.ai_provider_var, width=42,
                           state="readonly", values=providers)
         pv.pack(side="left")
-        self.ai_hint = ttk.Label(f, style="Dim.TLabel", wraplength=500)
+        self.ai_hint = ttk.Label(f, style="Dim.TLabel", wraplength=460)
         self.ai_hint.pack(anchor="w")
 
         r = self._row(f, "Model")
@@ -373,7 +374,7 @@ class SettingsWindow:
                                 state="readonly",
                                 values=["api_key", "oauth"])
         auth_box.pack(side="left")
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "api_key: paste a key from the provider · oauth: sign in with your "
             "account in the browser (needs a Client ID from the provider's "
             "developer program — apply once, then it's one click for everyone)."
@@ -420,16 +421,23 @@ class SettingsWindow:
 
         ttk.Label(f, text="PER-APP TONE", style="Section.TLabel"
                   ).pack(anchor="w", pady=(12, 4))
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "Different apps, different voice: casual in Slack, formal in "
             "Outlook. Add the program name and the extra instruction."
             )).pack(anchor="w")
         self.tone_list = theme.dark_listbox(f, height=4)
         self.tone_list.pack(fill="x", pady=4)
         self._refresh_tones()
-        tb = ttk.Frame(f); tb.pack(anchor="w", pady=(0, 6))
-        ttk.Button(tb, text="Add…", command=self._tone_add).pack(side="left", padx=2)
-        ttk.Button(tb, text="Remove selected", command=self._tone_remove).pack(side="left", padx=2)
+        tr = ttk.Frame(f); tr.pack(fill="x", pady=(2, 2))
+        self.tone_app_var = tk.StringVar()
+        self.tone_prompt_var = tk.StringVar()
+        ttk.Entry(tr, textvariable=self.tone_app_var, width=16).pack(side="left")
+        ttk.Entry(tr, textvariable=self.tone_prompt_var, width=34).pack(side="left", padx=6, fill="x", expand=True)
+        ttk.Button(tr, text="Add", command=self._tone_add).pack(side="left")
+        ttk.Label(f, style="Dim.TLabel",
+                  text="app (slack.exe)          instruction (Casual tone, lowercase ok)"
+                  ).pack(anchor="w")
+        ttk.Button(f, text="Remove selected", command=self._tone_remove).pack(anchor="w", pady=(4, 6))
 
         ttk.Label(f, text="CLEANUP INSTRUCTIONS", style="Section.TLabel"
                   ).pack(anchor="w", pady=(12, 4))
@@ -578,7 +586,7 @@ class SettingsWindow:
                    command=self._send_feedback).pack(side="left")
         self.fb_status = ttk.Label(r2, text="", style="Dim.TLabel")
         self.fb_status.pack(side="left", padx=10)
-        ttk.Label(f, style="Dim.TLabel", wraplength=500, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
             "Nothing else is sent — just what you type here. Developers can "
             "also open an issue on GitHub (Help → About → GitHub).")).pack(anchor="w")
 
@@ -618,7 +626,7 @@ class SettingsWindow:
                    command=self._check_updates).pack(side="left")
         self.update_status = ttk.Label(ub, text="", style="Dim.TLabel")
         self.update_status.pack(side="left", padx=10)
-        ttk.Label(f, style="Dim.TLabel", wraplength=480, justify="left", text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, justify="left", text=(
             "\nFree, open-source, local-first dictation for Windows.\n\n"
             "Your voice never leaves this computer unless you enable a cloud "
             "AI provider yourself.\n\n"
@@ -711,20 +719,16 @@ class SettingsWindow:
             self.tone_list.insert("end", f"  {app}   →   {shown}")
 
     def _tone_add(self):
-        app = simpledialog.askstring(
-            "Per-app tone", "Program file name (e.g. slack.exe, outlook.exe, winword.exe):",
-            parent=self.win)
-        if not app:
-            return
-        prompt = simpledialog.askstring(
-            "Per-app tone", f"Extra instruction when dictating into {app}:",
-            parent=self.win)
-        if not prompt:
+        app = self.tone_app_var.get().strip()
+        prompt = self.tone_prompt_var.get().strip()
+        if not app or not prompt:
             return
         tones = dict(self.cfg.get("per_app_prompts", {}))
         tones[app.strip().lower()] = prompt.strip()
         self.cfg["per_app_prompts"] = tones
         cfgmod.save(self.cfg)
+        self.tone_app_var.set("")
+        self.tone_prompt_var.set("")
         self._refresh_tones()
 
     def _tone_remove(self):
