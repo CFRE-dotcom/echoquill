@@ -56,7 +56,7 @@ Speaking is ~3x faster than typing. The paid dictation apps know it — and char
 
 **📖 A dictionary that learns** — names, jargon, and brands always come out right, and repeated corrections become dictionary entries automatically.
 
-**🤖 Optional AI polish** — plug in Anthropic Claude, OpenAI, Groq, Ollama (free, local), or Ollama Cloud for smarter cleanup — with different tone per app: casual in Slack, formal in Outlook. Off by default; your keys stay encrypted on your machine.
+**🤖 Optional AI polish** — plug in Anthropic Claude, OpenAI, Groq, Ollama (free, local), or Ollama Cloud for smarter cleanup — with different tone per app: casual in Slack, formal in Outlook. Off by default; your keys are stored in Windows Credential Manager.
 
 **⬆ Updates itself** — one click in Settings → About when a new version ships.
 
@@ -74,7 +74,7 @@ Requirements: Windows 10/11 + a microphone. First dictation downloads a speech m
 
 - Voice, transcripts, history, dictionary: **processed and stored only on your computer**
 - **Zero** analytics, telemetry, or tracking — read the code, it's all here
-- Network is used only for: one-time model downloads, video URLs *you* paste, update checks, and AI providers *you* enable with your own key (stored DPAPI-encrypted)
+- Network is used only for: one-time model downloads, video URLs *you* paste, update checks, and AI providers *you* enable with your own key (stored in Windows Credential Manager)
 
 Details: [SECURITY.md](SECURITY.md)
 

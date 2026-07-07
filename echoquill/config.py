@@ -261,6 +261,34 @@ def api_model(name: str) -> str:
     return (name or "").split(" (")[0].strip()
 
 
+KEYRING_MARK = "__stored_in_credential_manager__"
+_SECRET_KEYS = ("ai_api_key", "pro_license_key")
+
+
+def _kr_set(name: str, value: str) -> bool:
+    """Store a secret in Windows Credential Manager. True if it worked."""
+    try:
+        import keyring
+        if value:
+            keyring.set_password("EchoQuill", name, value)
+        else:
+            try:
+                keyring.delete_password("EchoQuill", name)
+            except Exception:
+                pass
+        return True
+    except Exception:
+        return False
+
+
+def _kr_get(name: str) -> str:
+    try:
+        import keyring
+        return keyring.get_password("EchoQuill", name) or ""
+    except Exception:
+        return ""
+
+
 def load() -> dict:
     cfg = dict(DEFAULTS)
     try:

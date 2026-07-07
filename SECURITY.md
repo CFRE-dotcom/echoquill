@@ -14,8 +14,8 @@ does not do, so users and reviewers can verify the claims against the source.
 - Video transcription: yt-dlp downloads audio from the URL you pasted
 
 ## Credentials
-- Your optional AI API key is encrypted at rest with the Windows Data
-  Protection API (DPAPI, per-user) - it is never written to disk in plain text.
+- Your optional AI API key and Pro license key are stored in the Windows
+  Credential Manager (the OS per-user secure vault) - never written to disk in plain text.
 
 ## Command Mode safety
 - Only a fixed allow-list of applications and key presses can be executed.

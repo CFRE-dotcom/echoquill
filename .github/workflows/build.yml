@@ -41,6 +41,7 @@ jobs:
           --hidden-import keyboard
           --collect-all tkinterdnd2
           --collect-all yt_dlp
+          --collect-all keyring
           run.py
 
       - name: Package portable zip

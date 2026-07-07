@@ -16,6 +16,7 @@ python -m PyInstaller --noconsole --name EchoQuill ^
   --hidden-import keyboard ^
   --collect-all tkinterdnd2 ^
   --collect-all yt_dlp ^
+  --collect-all keyring ^
   run.py
 if errorlevel 1 (
     echo Build failed - see messages above.
