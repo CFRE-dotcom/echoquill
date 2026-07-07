@@ -1,5 +1,8 @@
 <div align="center">
 
+<p align="center"><img src="assets/hero.png" alt="EchoQuill — free voice dictation for Windows" width="820"></p>
+
+
 # 🎙 EchoQuill
 
 ### Speak anywhere you can type. Free. Offline. Private.
@@ -41,6 +44,8 @@ Speaking is ~3x faster than typing. The paid dictation apps know it — and char
 | Per-app tone (casual in Slack, formal in Outlook) | **Yes** | Yes | No |
 | Choose your AI (Claude, OpenAI, Groq, free local Ollama) | **Yes** | No | No |
 | One-click self-update | **Yes** | Yes | Yes |
+
+<p align="center"><img src="assets/features.png" alt="EchoQuill features" width="820"></p>
 
 ## What it does
 
