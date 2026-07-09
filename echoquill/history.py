@@ -124,6 +124,26 @@ def period_stats() -> dict:
     return out
 
 
+def delete_many(ts_set) -> None:
+    """Delete every entry whose timestamp is in ts_set (one file rewrite)."""
+    ts_set = set(ts_set)
+    try:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        kept = []
+        for line in lines:
+            try:
+                if json.loads(line).get("ts") in ts_set:
+                    continue
+            except Exception:
+                pass
+            kept.append(line)
+        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
+            f.writelines(kept)
+    except FileNotFoundError:
+        pass
+
+
 def clear():
     try:
         HISTORY_PATH.unlink(missing_ok=True)
