@@ -268,10 +268,21 @@ KEYRING_MARK = "__stored_in_credential_manager__"
 _SECRET_KEYS = ("ai_api_key", "pro_license_key")
 
 
+def _kr_backend():
+    import keyring
+    try:
+        from keyring.backends import Windows
+        if Windows.WinVaultKeyring.viable:
+            keyring.set_keyring(Windows.WinVaultKeyring())
+    except Exception:
+        pass
+    return keyring
+
+
 def _kr_set(name: str, value: str) -> bool:
     """Store a secret in Windows Credential Manager. True if it worked."""
     try:
-        import keyring
+        keyring = _kr_backend()
         if value:
             keyring.set_password("EchoQuill", name, value)
         else:
@@ -286,7 +297,7 @@ def _kr_set(name: str, value: str) -> bool:
 
 def _kr_get(name: str) -> str:
     try:
-        import keyring
+        keyring = _kr_backend()
         return keyring.get_password("EchoQuill", name) or ""
     except Exception:
         return ""
@@ -302,13 +313,33 @@ def load() -> dict:
                 cfg.update(saved)
     except Exception:
         pass  # fall back to defaults on any corruption
+    for k in _SECRET_KEYS:
+        v = cfg.get(k, "")
+        if v == KEYRING_MARK:
+            cfg[k] = _kr_get(k)                 # read from Credential Manager
+        else:
+            plain = _decrypt_key(v)             # migrate any legacy DPAPI value
+            if plain and _kr_set(k, plain):
+                cfg[k] = plain
+            else:
+                cfg[k] = plain or ""
     return cfg
 
 
 def save(cfg: dict) -> None:
     try:
         out = dict(cfg)
-        out["ai_api_key"] = _encrypt_key(out.get("ai_api_key", ""))
+        for k in _SECRET_KEYS:
+            val = out.get(k, "")
+            if not val:
+                existing = _kr_get(k)          # don't blank an existing stored key
+                if existing:
+                    out[k] = KEYRING_MARK
+                    continue
+            if _kr_set(k, val):
+                out[k] = KEYRING_MARK if val else ""
+            else:
+                out[k] = _encrypt_key(val)
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(out, f, indent=2, ensure_ascii=False)
     except Exception:
