@@ -190,6 +190,9 @@ DEFAULTS = {
     "history_max_entries": 5000,
     # Overlay
     "overlay_enabled": True,
+    "theme": "dark",
+    "keep_audio": False,
+    "audio_max_mb": 500,
     "auto_check_updates": True,
     "admin_mode": False,
     # Start EchoQuill automatically with Windows (in-app toggle)

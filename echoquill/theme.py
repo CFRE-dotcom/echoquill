@@ -1,20 +1,45 @@
-"""Dark theme for all EchoQuill windows - modeled on modern settings panes."""
+"""Theming for all EchoQuill windows - dark, light, or follow-system."""
 
 import tkinter as tk
 from tkinter import ttk
 
-BG = "#1c1c1e"
-PANEL = "#232326"
-SIDEBAR = "#141416"
-FG = "#f2f2f7"
-DIM = "#98989d"
-ACCENT = "#0a84ff"
-FIELD = "#2c2c2e"
-BORDER = "#3a3a3c"
+_DARK = dict(BG="#1c1c1e", PANEL="#232326", SIDEBAR="#141416", FG="#f2f2f7",
+             DIM="#98989d", ACCENT="#0a84ff", FIELD="#2c2c2e", BORDER="#3a3a3c")
+_LIGHT = dict(BG="#f5f5f7", PANEL="#ffffff", SIDEBAR="#e9e9ec", FG="#1c1c1e",
+              DIM="#6b6b70", ACCENT="#0a84ff", FIELD="#ffffff", BORDER="#d0d0d5")
+
+# active palette (module globals other files read as theme.BG etc.)
+BG = _DARK["BG"]; PANEL = _DARK["PANEL"]; SIDEBAR = _DARK["SIDEBAR"]
+FG = _DARK["FG"]; DIM = _DARK["DIM"]; ACCENT = _DARK["ACCENT"]
+FIELD = _DARK["FIELD"]; BORDER = _DARK["BORDER"]
 
 FONT = ("Segoe UI", 10)
 FONT_SECTION = ("Segoe UI Semibold", 11)
 FONT_TITLE = ("Segoe UI Semibold", 16)
+
+
+def _system_prefers_light() -> bool:
+    try:
+        import winreg
+        k = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        val, _ = winreg.QueryValueEx(k, "AppsUseLightTheme")
+        return bool(val)
+    except Exception:
+        return False
+
+
+def set_mode(mode: str):
+    """mode: 'dark', 'light', or 'system'. Rebinds the active palette."""
+    if mode == "system":
+        pal = _LIGHT if _system_prefers_light() else _DARK
+    elif mode == "light":
+        pal = _LIGHT
+    else:
+        pal = _DARK
+    g = globals()
+    for k, v in pal.items():
+        g[k] = v
 
 
 def apply(win) -> ttk.Style:

@@ -176,6 +176,14 @@ class SettingsWindow:
         ttk.Checkbutton(f, text="Show the on-screen microphone pill",
                         variable=self.overlay_var).pack(anchor="w", pady=2)
 
+        r = self._row(f, "Appearance")
+        self.theme_var = tk.StringVar(value=self.cfg.get("theme", "dark"))
+        ttk.Combobox(r, textvariable=self.theme_var, width=24, state="readonly",
+                     values=["dark", "light", "system"]).pack(side="left")
+        ttk.Label(f, style="Dim.TLabel",
+                  text="Reopen windows to see a theme change take full effect."
+                  ).pack(anchor="w")
+
         self.autostart_var = tk.BooleanVar(value=self.cfg.get("autostart", False))
         ttk.Checkbutton(f, text="Start EchoQuill automatically when Windows starts",
                         variable=self.autostart_var).pack(anchor="w", pady=2)
@@ -495,6 +503,29 @@ class SettingsWindow:
         ttk.Button(hb, text="Export everything (zip)…",
                    command=self._export_all).pack(side="left", padx=4)
         ttk.Button(hb, text="Clear history", command=self._clear_history).pack(side="left", padx=4)
+
+        ttk.Label(f, text="AUDIO HISTORY", style="Section.TLabel").pack(anchor="w", pady=(14, 4))
+        from . import audio_store
+        self.keep_audio_var = tk.BooleanVar(value=self.cfg.get("keep_audio", False))
+        ttk.Checkbutton(f, variable=self.keep_audio_var, text=(
+            "Keep a recording of each dictation on this PC (off = save nothing)"
+            )).pack(anchor="w")
+        r = ttk.Frame(f); r.pack(anchor="w", pady=4)
+        ttk.Label(r, text="Storage budget (MB):").pack(side="left")
+        self.audio_mb_var = tk.IntVar(value=self.cfg.get("audio_max_mb", 500))
+        ttk.Spinbox(r, from_=50, to=20000, increment=50, width=8,
+                    textvariable=self.audio_mb_var).pack(side="left", padx=6)
+        ttk.Label(f, style="Dim.TLabel",
+                  text=f"Using {audio_store.usage_mb()} MB across {audio_store.count()} clips. "
+                       "Oldest are removed first when over budget.").pack(anchor="w")
+        ab = ttk.Frame(f); ab.pack(pady=6)
+        ttk.Button(ab, text="Open audio folder",
+                   command=lambda: __import__('os').startfile(str(audio_store.AUDIO_DIR))
+                   ).pack(side="left", padx=4)
+        ttk.Button(ab, text="Export audio (zip)…",
+                   command=self._export_audio).pack(side="left", padx=4)
+        ttk.Button(ab, text="Delete all audio",
+                   command=self._clear_audio).pack(side="left", padx=4)
 
     HELP_TOPICS = {
         "Dictation": (
@@ -822,6 +853,22 @@ class SettingsWindow:
                     zf.write(fp, os.path.join("transcripts", name))
         messagebox.showinfo("Export", "Everything exported ✓", parent=self.win)
 
+    def _export_audio(self):
+        from tkinter import filedialog
+        from . import audio_store
+        path = filedialog.asksaveasfilename(
+            parent=self.win, defaultextension=".zip",
+            initialfile="echoquill-audio.zip", filetypes=[("Zip", "*.zip")])
+        if path and audio_store.export_zip(path):
+            messagebox.showinfo("Audio", "Audio exported ✓", parent=self.win)
+
+    def _clear_audio(self):
+        from . import audio_store
+        if messagebox.askyesno("Delete audio",
+                               "Delete all saved dictation recordings?", parent=self.win):
+            audio_store.clear()
+            messagebox.showinfo("Audio", "Deleted ✓", parent=self.win)
+
     def _clear_history(self):
         if messagebox.askyesno("Clear history", "Delete all local dictation history?",
                                parent=self.win):
@@ -874,6 +921,9 @@ class SettingsWindow:
             "insertion_mode": self.insert_var.get(),
             "always_copy": self.always_copy_var.get(),
             "overlay_enabled": self.overlay_var.get(),
+            "theme": self.theme_var.get(),
+            "keep_audio": self.keep_audio_var.get(),
+            "audio_max_mb": int(self.audio_mb_var.get()),
             "autostart": self.autostart_var.get(),
             "admin_mode": self.adminmode_var.get(),
             "command_mode": self.cmdmode_var.get(),

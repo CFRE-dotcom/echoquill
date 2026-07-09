@@ -23,6 +23,8 @@ APP_TITLE = "EchoQuill"
 class App:
     def __init__(self):
         self.cfg = cfgmod.load()
+        from . import theme as _theme0
+        _theme0.set_mode(self.cfg.get("theme", "dark"))
         self.dictionary = Dictionary()
         self.transcriber = Transcriber(self.cfg["model"])
         # Separate ultra-fast model so live words keep up with your voice
@@ -372,6 +374,11 @@ class App:
         try:
             audio = self.recorder.stop()
             duration = time.time() - self._record_started_at
+            try:
+                from . import audio_store
+                audio_store.save(audio, self.cfg)
+            except Exception:
+                pass
             if self._mode == "command":
                 from . import commands
                 raw = self.transcriber.transcribe_command(
@@ -460,6 +467,8 @@ class App:
 
     def _on_settings_saved(self, cfg):
         self.cfg = cfg
+        from . import theme as _theme1
+        _theme1.set_mode(cfg.get("theme", "dark"))
         self.transcriber.set_model(cfg["model"])
         self.preview_transcriber.set_model(cfg.get("preview_model", "tiny"))
         self._register_activation()
