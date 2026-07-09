@@ -18,6 +18,7 @@ class ClipboardWindow:
         self.win.geometry("560x420")
         self.win.minsize(460, 340)
         self.win.attributes("-topmost", True)
+        self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
         theme.apply(self.win)
 
         ttk.Label(self.win, text="Recent transcriptions",
@@ -34,9 +35,14 @@ class ClipboardWindow:
         ttk.Button(bar, text="Copy selected", style="Accent.TButton",
                    command=self._copy).pack(side="right")
 
-        self.entries = history.entries(limit=10)
+        try:
+            self.entries = history.entries(limit=10)
+        except Exception:
+            self.entries = []
         self.listbox = theme.dark_listbox(self.win, activestyle="none")
         self.listbox.pack(fill="both", expand=True, padx=16)
+        if not self.entries:
+            self.listbox.insert("end", "  No transcriptions yet.")
         for e in self.entries:
             text = e.get("text", "").replace("\n", " ")
             when = str(e.get("date", ""))[11:16]
@@ -47,6 +53,8 @@ class ClipboardWindow:
     def _copy(self):
         sel = self.listbox.curselection()
         if not sel:
+            return
+        if sel[0] >= len(self.entries):
             return
         entry = self.entries[sel[0]]
         try:
