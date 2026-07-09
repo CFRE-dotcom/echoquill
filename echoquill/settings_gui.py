@@ -360,6 +360,7 @@ class SettingsWindow:
         bar = ttk.Frame(f)
         bar.pack(pady=8)
         ttk.Button(bar, text="Add…", command=self._dict_add).pack(side="left", padx=4)
+        ttk.Button(bar, text="Edit…", command=self._dict_edit).pack(side="left", padx=4)
         ttk.Button(bar, text="Remove selected",
                    command=self._dict_remove).pack(side="left", padx=4)
 
@@ -684,6 +685,30 @@ class SettingsWindow:
         if right is None:
             return
         self.dictionary.add(wrong, right)
+        self._refresh_dict()
+
+    def _dict_edit(self):
+        sel = self.dict_list.curselection()
+        if not sel:
+            return
+        line = self.dict_list.get(sel[0])
+        try:
+            old_wrong, old_right = [p.strip() for p in line.split("   →   ", 1)]
+        except ValueError:
+            return
+        new_wrong = simpledialog.askstring(
+            "Edit replacement", "When it hears:",
+            initialvalue=old_wrong, parent=self.win)
+        if not new_wrong:
+            return
+        new_right = simpledialog.askstring(
+            "Edit replacement", f'Replace "{new_wrong}" with:',
+            initialvalue=old_right, parent=self.win)
+        if new_right is None:
+            return
+        if new_wrong != old_wrong:
+            self.dictionary.remove(old_wrong)   # key changed: drop the old one
+        self.dictionary.add(new_wrong, new_right)
         self._refresh_dict()
 
     def _dict_remove(self):
