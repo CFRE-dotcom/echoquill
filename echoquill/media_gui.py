@@ -142,6 +142,8 @@ class MediaWindow:
         ttk.Button(row2, text="Batch: many URLs…",
                    command=self._open_batch).pack(side="left", padx=8)
         ttk.Button(row2, text="Clear", command=self._clear).pack(side="left")
+        self.stop_btn = ttk.Button(row2, text="Stop", command=self._stop, state="disabled")
+        self.stop_btn.pack(side="left", padx=(8, 0))
         self.status = ttk.Label(row2, text="", style="Dim.TLabel")
         self.status.pack(side="left", padx=12)
 
@@ -193,7 +195,14 @@ class MediaWindow:
             self._own_engine = Transcriber(self.cfg.get("model", "base"))
         return self._own_engine
 
+    def _stop(self):
+        """Cancel an in-progress transcription."""
+        self._cancel = True
+        self._set_status("Stopping…")
+
     def _run(self, source, is_url):
+        self._cancel = False
+        self.win.after(0, lambda: self.stop_btn.configure(state="normal"))
         if _allowance(self.cfg) <= 0:
             self._set_status(LIMIT_MSG)
             return
@@ -219,6 +228,8 @@ class MediaWindow:
             with eng._lock:
                 segments, _info = model.transcribe(path, language=lang, vad_filter=True)
                 for seg in segments:
+                    if self._cancel:
+                        break
                     t = seg.text.strip()
                     parts.append(t)
                     self._seg_map.append((pos, pos + len(t) + 1, seg.start))
@@ -240,6 +251,9 @@ class MediaWindow:
             self._set_status(f"Error: {e}")
         finally:
             _keep_awake(False)
+            self.win.after(0, lambda: self.stop_btn.configure(state="disabled"))
+            if getattr(self, "_cancel", False):
+                self._set_status("Stopped.")
             if is_url and path:
                 import shutil
                 shutil.rmtree(os.path.dirname(path), ignore_errors=True)
