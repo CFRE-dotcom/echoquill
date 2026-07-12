@@ -39,6 +39,8 @@ Speaking is about three times faster than typing — and the paid dictation apps
 | Batch-transcribe a list of URLs | **Yes** | No | No |
 | Timestamped transcript search | **Yes** | No | No |
 | Clipboard manager with drag & drop | **Yes** | No | No |
+| Click a clip to paste at your cursor | **Yes** | No | No |
+| Edit & manage your transcription history | **Yes** | No | No |
 | Learning dictionary | **Yes** | Yes | Yes |
 | Per-app tone & formatting | **Yes** | Yes | No |
 | Choose your AI (Claude, OpenAI, Groq, Ollama…) | **Yes** | No | No |
@@ -59,7 +61,7 @@ Speaking is about three times faster than typing — and the paid dictation apps
 
 **🎬 Turn videos into text.** Paste a link from YouTube (including Shorts), TikTok, and ~1,800 other sites, or pick any media file. Transcripts auto-save, named after the video, with title and URL on top. **Batch mode** chews through a whole list of URLs unattended, with a Stop button any time. Search a transcript and matches report *when* they were said: `4 matches — at 02:14, 05:37, 11:02`.
 
-**📋 Clips tray.** Your recent dictations in a draggable floating tray. Click a clip to paste it at your cursor, drag one into any window, or search to find old ones. A full transcription browser lets you multi-select, delete, and manage everything.
+**📋 Clips & history you control.** Recent dictations live in a draggable floating tray — **click a clip and it pastes straight into whatever field your cursor is in**, or drag it into a specific spot. A full transcription browser lets you search, multi-select, delete, and — unique among dictation apps — **edit the text of any past transcription and save it back**.
 
 **📖 A dictionary that learns.** Names, jargon, and brands always come out right — add, **edit**, or remove entries, and repeated corrections become dictionary entries automatically.
 
