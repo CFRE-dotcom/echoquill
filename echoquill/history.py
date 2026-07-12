@@ -124,6 +124,29 @@ def period_stats() -> dict:
     return out
 
 
+def update(ts, new_text: str) -> None:
+    """Replace the text of the entry with this timestamp; recount words."""
+    try:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        out = []
+        for line in lines:
+            try:
+                e = json.loads(line)
+            except Exception:
+                out.append(line); continue
+            if e.get("ts") == ts:
+                e["text"] = new_text
+                e["words"] = len(new_text.split())
+                out.append(json.dumps(e, ensure_ascii=False) + "\n")
+            else:
+                out.append(line)
+        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
+            f.writelines(out)
+    except FileNotFoundError:
+        pass
+
+
 def delete_many(ts_set) -> None:
     """Delete every entry whose timestamp is in ts_set (one file rewrite)."""
     ts_set = set(ts_set)
