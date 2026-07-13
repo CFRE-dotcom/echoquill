@@ -85,12 +85,10 @@ class ClipsTray:
 
         srow = tk.Frame(self.win, bg=theme.PANEL)
         srow.pack(fill="x", padx=8, pady=(8, 0))
-        tk.Label(srow, text="🔍", bg=theme.PANEL, fg=theme.DIM).pack(side="left")
-        self.search_var = tk.StringVar()
-        se = tk.Entry(srow, textvariable=self.search_var, bg=theme.FIELD,
-                      fg=theme.FG, insertbackground=theme.FG, borderwidth=0)
-        se.pack(side="left", fill="x", expand=True, padx=6, ipady=4)
-        se.bind("<KeyRelease>", lambda e: self.refresh())
+        from . import widgets
+        _swrap, self._search_value = widgets.make_search(
+            srow, "Search your clips…", self.refresh)
+        _swrap.pack(fill="x")
 
         self.body = tk.Frame(self.win, bg=theme.PANEL)
         self.body.pack(fill="both", expand=True, padx=8, pady=8)
@@ -144,7 +142,7 @@ class ClipsTray:
     def refresh(self):
         for w in self.body.winfo_children():
             w.destroy()
-        term = self.search_var.get().strip().lower()
+        term = self._search_value().lower()
         entries = history.entries(limit=10)
         if not entries:
             tk.Label(self.body, text="No clips yet — dictate something!",
@@ -169,12 +167,14 @@ class ClipsTray:
             ed.bind("<Button-1>", lambda ev, t=text, ts2=ts: self._edit_clip(t, ts2))
             ed.bind("<Enter>", lambda ev, w=ed: w.configure(fg=theme.ACCENT))
             ed.bind("<Leave>", lambda ev, w=ed: w.configure(fg=theme.DIM))
+            helptip.tip(ed, "Edit this clip (with Ask AI)")
             x = tk.Label(row, text="✕", bg=bg, fg=theme.DIM,
                          font=("Segoe UI", 10), padx=8, cursor="hand2")
             x.pack(side="right")
             x.bind("<Button-1>", lambda ev, t=ts: self._delete(t))
             x.bind("<Enter>", lambda ev, w=x: w.configure(fg="#ff453a"))
             x.bind("<Leave>", lambda ev, w=x: w.configure(fg=theme.DIM))
+            helptip.tip(x, "Delete")
             # click = paste into last app · press-and-move = carry & drop
             lbl.bind("<ButtonPress-1>", lambda ev, t=text: self._press(ev, t))
             lbl.bind("<B1-Motion>", self._maybe_drag)
