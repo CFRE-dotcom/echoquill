@@ -30,11 +30,18 @@ class ClipboardWindow:
         self._page = 0
         self._tab = "recent"
 
-        ttk.Label(self.win, text="Recent transcriptions",
-                  style="Title.TLabel").pack(anchor="w", padx=16, pady=(12, 2))
-        ttk.Label(self.win, style="Dim.TLabel",
-                  text="Click a line to copy · ★ favorite · ✎ edit · ✕ delete"
-                  ).pack(anchor="w", padx=16, pady=(0, 6))
+        _title_row = tk.Frame(self.win, bg=theme.BG)
+        _title_row.pack(fill="x", padx=16, pady=(12, 6))
+        ttk.Label(_title_row, text="Recent transcriptions",
+                  style="Title.TLabel").pack(side="left")
+        helptip.attach(self.win, _title_row, "Recent transcriptions — help",
+                       "Click a line to copy it.\n"
+                       "★  Favorite (click again to remove)\n"
+                       "✎  Edit the text (with Ask AI)\n"
+                       "✕  Delete\n\n"
+                       "Use the Recent / Favorites tabs and the Search box to "
+                       "find things. Hover any icon for a tip."
+                       ).pack(side="left", padx=8)
 
         # ---- Recent / Favorites tabs ----
         tabs = tk.Frame(self.win, bg=theme.BG)
