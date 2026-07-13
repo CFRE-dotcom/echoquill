@@ -53,7 +53,7 @@ class ClipboardWindow:
         self.menu = tk.Menu(self.win, tearoff=0)
         self.menu.add_command(label="✎  Edit", command=self._edit)
         self.menu.add_command(label="⧉  Copy", command=self._copy)
-        self.menu.add_command(label="★  Add to favorites", command=self._favorite)
+        self.menu.add_command(label="★  Favorite / Unfavorite", command=self._favorite)
         self.menu.add_separator()
         self.menu.add_command(label="\U0001f5d1  Delete", command=self._delete_selected)
 
@@ -116,15 +116,22 @@ class ClipboardWindow:
         chosen = self._selected()
         if not chosen:
             self.status.configure(text="Select a line first"); return
-        added = 0
+        added = removed = 0
         for e in chosen:
             t = e.get("text", "")
-            if t and not favorites.is_favorite(t):
-                favorites.toggle(t); added += 1
+            if not t:
+                continue
+            if favorites.toggle(t):      # click again to un-favorite
+                added += 1
+            else:
+                removed += 1
         self._fill()
-        self.status.configure(
-            text=(f"Added {added} to Favorites ★" if added
-                  else "Already in Favorites ★"))
+        if added and removed:
+            self.status.configure(text=f"★ {added} added, {removed} removed")
+        elif added:
+            self.status.configure(text=f"Added {added} to Favorites ★")
+        else:
+            self.status.configure(text=f"Removed {removed} from Favorites")
 
     def _edit(self):
         chosen = self._selected()

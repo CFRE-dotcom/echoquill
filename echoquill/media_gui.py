@@ -124,15 +124,15 @@ class MediaWindow:
         ttk.Button(bar, text="⭐ Upgrade",
                    command=lambda: open_upgrade(self.cfg)).pack(side="right")
 
-        ttk.Label(self.win, text="Transcribe video / audio",
-                  style="Title.TLabel").pack(anchor="w", padx=18, pady=(14, 2))
+        _title_row = ttk.Frame(self.win)
+        _title_row.pack(anchor="w", padx=18, pady=(14, 2))
+        ttk.Label(_title_row, text="Transcribe video / audio",
+                  style="Title.TLabel").pack(side="left")
+        helptip.attach(self.win, _title_row, "Transcriber - help", MEDIA_HELP).pack(side="left", padx=8)
         ttk.Label(self.win, style="Dim.TLabel", wraplength=580, text=(
             "Paste a video URL (YouTube and most sites), or pick a file from "
             "your computer. Runs on your PC with the same free engine — "
             "nothing is uploaded anywhere.")).pack(anchor="w", padx=18)
-        media_help_row = ttk.Frame(self.win); media_help_row.pack(anchor="w", padx=18, pady=(2, 0))
-        ttk.Label(media_help_row, text="New here?", style="Dim.TLabel").pack(side="left")
-        helptip.attach(self.win, media_help_row, "Transcriber - help", MEDIA_HELP).pack(side="left", padx=6)
 
         row = ttk.Frame(self.win)
         row.pack(fill="x", padx=18, pady=(12, 4))
