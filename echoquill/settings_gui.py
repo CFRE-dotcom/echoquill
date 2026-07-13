@@ -53,6 +53,8 @@ class SettingsWindow:
                    command=self._save).pack(side="right", padx=16, pady=10)
         self.content = ttk.Frame(right)
         self.content.pack(side="top", fill="both", expand=True)
+        # green "update available" banner (hidden until a check finds one)
+        self._update_banner = tk.Frame(right, bg="#30d158")
 
         up = tk.Label(self.sidebar, text="⭐ Upgrade to Pro",
                       bg=theme.SIDEBAR, fg="#ffd60a",
@@ -92,11 +94,13 @@ class SettingsWindow:
                    else "General")
         self._snapshot = self._collect_state()
         self.win.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._start_update_autocheck()
 
     def show_section(self, name=None):
         if name in self.SECTIONS:
             self._show(name)          # only switch tabs when explicitly asked
         self.raise_window()
+        self._start_update_autocheck()
 
     def raise_window(self):
         """Actually bring the window to the front (Windows fights this)."""
@@ -699,6 +703,78 @@ class SettingsWindow:
             "Inspired by FluidVoice for macOS (independent project, "
             "not affiliated).\n\nLicense: MIT — free forever."
         )).pack(anchor="w")
+
+    # ---------- update banner ----------
+
+    def _start_update_autocheck(self):
+        """Check for a newer version in the background; show an in-app banner."""
+        import threading
+
+        def run():
+            try:
+                from . import update
+                found = update.check()
+            except Exception:
+                found = None
+            if found:
+                ver, url = found
+                try:
+                    self.win.after(0, lambda: self._show_update_banner(ver, url))
+                except Exception:
+                    pass
+        threading.Thread(target=run, daemon=True).start()
+
+    def _show_update_banner(self, ver, url=None):
+        if not (hasattr(self, "_update_banner") and self._update_banner.winfo_exists()):
+            return
+        for w in self._update_banner.winfo_children():
+            w.destroy()
+        self._banner_msg = tk.Label(
+            self._update_banner, text=f"  \u2b06  Update available \u2014 v{ver}",
+            bg="#30d158", fg="#00330f", font=("Segoe UI Semibold", 10), pady=8)
+        self._banner_msg.pack(side="left", padx=(12, 0))
+        tk.Button(self._update_banner, text="Install now",
+                  bg="#00330f", fg="#eaffef", activebackground="#004d17",
+                  activeforeground="#ffffff", relief="flat", cursor="hand2",
+                  font=("Segoe UI Semibold", 9), padx=14, pady=3,
+                  command=lambda: self._do_update(url)).pack(side="right", padx=12, pady=6)
+        dismiss = tk.Label(self._update_banner, text="Later", bg="#30d158",
+                           fg="#00330f", cursor="hand2", font=("Segoe UI", 9))
+        dismiss.pack(side="right", padx=(0, 4))
+        dismiss.bind("<Button-1>", lambda e: self._update_banner.pack_forget())
+        try:
+            self._update_banner.pack(side="top", fill="x", before=self.content)
+        except Exception:
+            self._update_banner.pack(side="top", fill="x")
+
+    def _do_update(self, url):
+        import threading
+
+        def msg(text):
+            try:
+                self.win.after(0, lambda: self._banner_msg.configure(
+                    text=f"  \u2b06  {text}"))
+            except Exception:
+                pass
+
+        def run():
+            try:
+                from . import update
+                u = url
+                if not u:
+                    found = update.check()
+                    if not found:
+                        msg("You're on the latest version")
+                        return
+                    _v, u = found
+                msg("Downloading update\u2026")
+                update.download_and_run(u, msg)
+                msg("Installer launched \u2014 EchoQuill will close\u2026")
+                if self.on_quit:
+                    self.win.after(1500, self.on_quit)
+            except Exception as e:
+                msg(f"Update failed: {e}")
+        threading.Thread(target=run, daemon=True).start()
 
     # ---------- actions ----------
 

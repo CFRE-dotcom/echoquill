@@ -209,8 +209,12 @@ class App:
                     self._update_badge.hide()
                     self._open_settings(section="About")
                 elif isinstance(ev, tuple) and ev[0] == "update_available":
+                    # show it INSIDE the app (Settings window), not a floating badge
+                    self._pending_update = ev[1]
+                    win = getattr(self, "_settings_win", None)
                     try:
-                        self._update_badge.show(ev[1])
+                        if win is not None and win.win.winfo_exists():
+                            win._show_update_banner(ev[1])
                     except Exception:
                         pass
                 elif ev == "history":
