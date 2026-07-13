@@ -1,4 +1,4 @@
-"""Pop-up browser of recent transcriptions (free: last 10, deletable)."""
+"""Recent transcriptions browser (free: last 10, editable, deletable)."""
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -10,34 +10,40 @@ class ClipboardWindow:
     def __init__(self, root: tk.Tk):
         self.win = tk.Toplevel(root)
         self.win.title("EchoQuill — Recent transcriptions")
-        self.win.geometry("740x460")
-        self.win.minsize(700, 380)
+        self.win.geometry("700x460")
+        self.win.minsize(540, 360)
         self.win.attributes("-topmost", True)
         self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
         theme.apply(self.win)
 
         ttk.Label(self.win, text="Recent transcriptions",
-                  style="Title.TLabel").pack(anchor="w", padx=16, pady=(14, 2))
+                  style="Title.TLabel").pack(anchor="w", padx=16, pady=(12, 2))
         ttk.Label(self.win, style="Dim.TLabel",
-                  text="Click to select · Shift/Ctrl-click for many · double-click to copy. "
-                       "Free shows your last 10 — Pro keeps unlimited + Favorites."
-                  ).pack(anchor="w", padx=16, pady=(0, 8))
+                  text="Select a line, then Edit or Copy. Free shows your last 10 — "
+                       "Pro keeps unlimited + Favorites."
+                  ).pack(anchor="w", padx=16, pady=(0, 6))
 
-        bar = ttk.Frame(self.win)
-        bar.pack(side="bottom", fill="x", padx=16, pady=10)
-        self.status = ttk.Label(bar, text="", style="Dim.TLabel")
-        self.status.pack(side="left")
-        # per-item actions on the LEFT (always visible), bulk actions on the RIGHT
-        ttk.Button(bar, text="Edit…", command=self._edit).pack(side="left", padx=(12, 4))
-        ttk.Button(bar, text="Copy", style="Accent.TButton", command=self._copy).pack(side="left", padx=4)
-        ttk.Button(bar, text="Delete all", command=self._delete_all).pack(side="right", padx=(4, 0))
-        ttk.Button(bar, text="Delete selected", command=self._delete_selected).pack(side="right", padx=4)
-        ttk.Button(bar, text="Select all", command=self._select_all).pack(side="right", padx=4)
+        top = ttk.Frame(self.win)
+        top.pack(fill="x", padx=16, pady=(0, 6))
+        self.page_lbl = ttk.Label(top, text="", style="Dim.TLabel")
+        self.page_lbl.pack(side="left")
+        ttk.Button(top, text="✎ Edit selected", style="Accent.TButton",
+                   command=self._edit).pack(side="right")
 
         self.listbox = theme.dark_listbox(self.win, activestyle="none",
                                           selectmode="extended")
         self.listbox.pack(fill="both", expand=True, padx=16)
         self.listbox.bind("<Double-Button-1>", lambda e: self._copy())
+
+        bar = ttk.Frame(self.win)
+        bar.pack(side="bottom", fill="x", padx=16, pady=10)
+        self.status = ttk.Label(bar, text="", style="Dim.TLabel")
+        self.status.pack(side="left")
+        ttk.Button(bar, text="Delete all", command=self._delete_all).pack(side="right", padx=(4, 0))
+        ttk.Button(bar, text="Delete selected", command=self._delete_selected).pack(side="right", padx=4)
+        ttk.Button(bar, text="Select all", command=self._select_all).pack(side="right", padx=4)
+        ttk.Button(bar, text="Copy", style="Accent.TButton", command=self._copy).pack(side="right", padx=4)
+
         self.entries = []
         self._fill()
 
@@ -52,44 +58,24 @@ class ClipboardWindow:
         for e in self.entries:
             text = e.get("text", "").replace("\n", " ")
             when = str(e.get("date", ""))[:16]
-            shown = text if len(text) <= 76 else text[:73] + "…"
+            shown = text if len(text) <= 84 else text[:81] + "…"
             self.listbox.insert("end", f" {when}   {shown}")
-        self.status.configure(text=f"{len(self.entries)} shown" if self.entries else "")
+        self.page_lbl.configure(text=f"{len(self.entries)} most recent" if self.entries else "")
 
     def _select_all(self):
         if self.entries:
             self.listbox.select_set(0, "end")
 
-    def _selected_entries(self):
+    def _selected(self):
         return [self.entries[i] for i in self.listbox.curselection()
                 if i < len(self.entries)]
 
-    def _delete_selected(self):
-        chosen = self._selected_entries()
-        if not chosen:
-            self.status.configure(text="Nothing selected")
-            return
-        history.delete_many(e.get("ts") for e in chosen)
-        self._fill()
-        self.status.configure(text=f"Deleted {len(chosen)}")
-
-    def _delete_all(self):
-        if not self.entries:
-            return
-        if messagebox.askyesno("Delete all",
-                               "Delete all transcription history? This can't be undone.",
-                               parent=self.win):
-            history.clear()
-            self._fill()
-            self.status.configure(text="All deleted")
-
     def _edit(self):
-        sel = self.listbox.curselection()
-        if not sel or not self.entries or sel[0] >= len(self.entries):
-            self.status.configure(text="Select one entry to edit")
+        chosen = self._selected()
+        if len(chosen) != 1:
+            self.status.configure(text="Select exactly one line to edit")
             return
-        entry = self.entries[sel[0]]
-        ts = entry.get("ts")
+        entry = chosen[0]; ts = entry.get("ts")
         dlg = tk.Toplevel(self.win)
         dlg.title("Edit transcription")
         dlg.geometry("560x300")
@@ -104,19 +90,26 @@ class ClipboardWindow:
         row = ttk.Frame(dlg); row.pack(fill="x", padx=14, pady=10)
 
         def save():
-            new_text = box.get("1.0", "end").strip()
-            history.update(ts, new_text)
-            self._reload() if hasattr(self, "_reload") else None
-            self._fill()
-            dlg.destroy()
+            history.update(ts, box.get("1.0", "end").strip())
+            self._fill(); dlg.destroy()
             self.status.configure(text="Saved ✓")
-
-        ttk.Button(row, text="Save", style="Accent.TButton",
-                   command=save).pack(side="right")
+        ttk.Button(row, text="Save", style="Accent.TButton", command=save).pack(side="right")
         ttk.Button(row, text="Cancel", command=dlg.destroy).pack(side="right", padx=6)
 
+    def _delete_selected(self):
+        chosen = self._selected()
+        if not chosen:
+            self.status.configure(text="Nothing selected"); return
+        history.delete_many(e.get("ts") for e in chosen)
+        self._fill(); self.status.configure(text=f"Deleted {len(chosen)}")
+
+    def _delete_all(self):
+        if self.entries and messagebox.askyesno(
+                "Delete all", "Delete all transcription history?", parent=self.win):
+            history.clear(); self._fill()
+
     def _copy(self):
-        chosen = self._selected_entries()
+        chosen = self._selected()
         if not chosen:
             return
         try:

@@ -163,6 +163,12 @@ class ClipsTray:
                            fg=theme.FG, font=("Segoe UI", 9), wraplength=270,
                            justify="left", pady=6, padx=6, cursor="hand2")
             lbl.pack(side="left", fill="x", expand=True)
+            ed = tk.Label(row, text="✎", bg=bg, fg=theme.DIM,
+                          font=("Segoe UI", 10), padx=4, cursor="hand2")
+            ed.pack(side="right")
+            ed.bind("<Button-1>", lambda ev, t=text, ts2=ts: self._edit_clip(t, ts2))
+            ed.bind("<Enter>", lambda ev, w=ed: w.configure(fg=theme.ACCENT))
+            ed.bind("<Leave>", lambda ev, w=ed: w.configure(fg=theme.DIM))
             x = tk.Label(row, text="✕", bg=bg, fg=theme.DIM,
                          font=("Segoe UI", 10), padx=8, cursor="hand2")
             x.pack(side="right")
@@ -177,6 +183,30 @@ class ClipsTray:
     def _delete(self, ts):
         history.delete(ts)
         self.refresh()
+
+    def _edit_clip(self, text, ts):
+        dlg = tk.Toplevel(self.win)
+        dlg.title("Edit clip")
+        dlg.geometry("460x260")
+        dlg.attributes("-topmost", True)
+        dlg.configure(bg=theme.PANEL)
+        dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
+        tk.Label(dlg, text="Edit the text, then Save:", bg=theme.PANEL,
+                 fg=theme.DIM, font=("Segoe UI", 10)).pack(anchor="w", padx=12, pady=(12, 4))
+        box = tk.Text(dlg, wrap="word", bg=theme.FIELD, fg=theme.FG,
+                      insertbackground=theme.FG, borderwidth=0, font=("Segoe UI", 10))
+        box.pack(fill="both", expand=True, padx=12)
+        box.insert("1.0", text)
+        rw = tk.Frame(dlg, bg=theme.PANEL); rw.pack(fill="x", padx=12, pady=10)
+
+        def save():
+            history.update(ts, box.get("1.0", "end").strip())
+            dlg.destroy()
+            self.refresh()
+        tk.Button(rw, text="Save", command=save, bg=theme.ACCENT, fg="#fff",
+                  borderwidth=0, padx=14, pady=4, cursor="hand2").pack(side="right")
+        tk.Button(rw, text="Cancel", command=dlg.destroy, bg=theme.FIELD, fg=theme.FG,
+                  borderwidth=0, padx=14, pady=4, cursor="hand2").pack(side="right", padx=6)
 
     # ---------- click vs drag ----------
 
