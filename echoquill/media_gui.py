@@ -8,6 +8,10 @@ import tempfile
 import threading
 
 from . import config as cfgmod
+from . import helptip
+
+MEDIA_HELP = 'How to transcribe video and audio\n\n- Paste a URL from YouTube (incl. Shorts), TikTok, and ~1,800 sites, then click Transcribe URL.\n- Choose a file on this PC to transcribe any audio or video file.\n- Batch: many URLs - paste a whole list; each is transcribed one at a time and auto-saved (named after the video) in your Transcriptions folder.\n- Stop cancels a transcription in progress.\n- Find in transcript: type a word to highlight it, with timestamps.\n\nEverything runs on your PC - nothing is uploaded.'
+
 
 
 def _allowance(cfg) -> int:
@@ -126,6 +130,9 @@ class MediaWindow:
             "Paste a video URL (YouTube and most sites), or pick a file from "
             "your computer. Runs on your PC with the same free engine — "
             "nothing is uploaded anywhere.")).pack(anchor="w", padx=18)
+        media_help_row = ttk.Frame(self.win); media_help_row.pack(anchor="w", padx=18, pady=(2, 0))
+        ttk.Label(media_help_row, text="New here?", style="Dim.TLabel").pack(side="left")
+        helptip.attach(self.win, media_help_row, "Transcriber - help", MEDIA_HELP).pack(side="left", padx=6)
 
         row = ttk.Frame(self.win)
         row.pack(fill="x", padx=18, pady=(12, 4))

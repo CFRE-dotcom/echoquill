@@ -12,7 +12,7 @@ import threading
 import time
 import tkinter as tk
 
-from . import history, injector, theme
+from . import helptip, history, injector, theme
 
 DRAG_THRESHOLD = 10  # pixels of movement that turn a click into a drag
 
@@ -67,6 +67,18 @@ class ClipsTray:
                          font=("Segoe UI", 11), cursor="hand2")
         close.pack(side="right", padx=6)
         close.bind("<Button-1>", lambda e: self._close())
+        _help = ("How to use the Clips tray\n\n"
+                 "• CLICK a clip — it pastes straight into whatever text field "
+                 "your cursor is in (the app you were just using).\n"
+                 "• DRAG a clip — press and hold, then drag it onto any window "
+                 "to drop the text exactly where you let go.\n"
+                 "• Search — type in the box to highlight clips that contain a word.\n"
+                 "• ✕ — delete a clip you don't want.\n"
+                 "• Drag the top bar to move this tray anywhere.\n\n"
+                 "Pasting into a program and nothing happens? That app is probably "
+                 "running as administrator. Turn on Settings → General → "
+                 "Administrator mode, or set Insert text by → \"type\".")
+        helptip.attach(self.win, header, "Clips tray — help", _help).pack(side="right", padx=4)
         for w in (header, title):
             w.bind("<Button-1>", self._win_drag_start)
             w.bind("<B1-Motion>", self._win_drag_move)
