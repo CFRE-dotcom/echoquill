@@ -115,12 +115,16 @@ class MediaWindow:
         # bottom action bar FIRST so it can never be pushed off-screen
         bar = ttk.Frame(self.win)
         bar.pack(side="bottom", fill="x", padx=18, pady=(2, 12))
-        ttk.Button(bar, text="Copy transcript", style="Accent.TButton",
-                   command=self._copy).pack(side="left")
-        ttk.Button(bar, text="Save as .txt…", command=self._save).pack(side="left", padx=8)
-        ttk.Button(bar, text="Open transcripts folder",
-                   command=lambda: os.startfile(transcripts_dir(self.cfg))
-                   ).pack(side="left")
+        _b_copy = ttk.Button(bar, text="Copy transcript", style="Accent.TButton",
+                   command=self._copy); _b_copy.pack(side="left")
+        helptip.tip(_b_copy, "Copy the whole transcript to the clipboard.")
+        _b_save = ttk.Button(bar, text="Save as .txt…", command=self._save)
+        _b_save.pack(side="left", padx=8)
+        helptip.tip(_b_save, "Save the transcript as a text file.")
+        _b_open = ttk.Button(bar, text="Open transcripts folder",
+                   command=lambda: os.startfile(transcripts_dir(self.cfg)))
+        _b_open.pack(side="left")
+        helptip.tip(_b_open, "Open the folder where transcripts are saved.")
         ttk.Button(bar, text="⭐ Upgrade",
                    command=lambda: open_upgrade(self.cfg)).pack(side="right")
 
@@ -139,18 +143,24 @@ class MediaWindow:
         self.url_var = tk.StringVar()
         ttk.Entry(row, textvariable=self.url_var).pack(
             side="left", fill="x", expand=True)
-        ttk.Button(row, text="Transcribe URL", style="Accent.TButton",
-                   command=self._go_url).pack(side="left", padx=(8, 0))
+        _b_url = ttk.Button(row, text="Transcribe URL", style="Accent.TButton",
+                   command=self._go_url); _b_url.pack(side="left", padx=(8, 0))
+        helptip.tip(_b_url, "Download and transcribe the video/audio at this URL.")
 
         row2 = ttk.Frame(self.win)
         row2.pack(fill="x", padx=18, pady=4)
-        ttk.Button(row2, text="Choose a file on this PC…",
-                   command=self._go_file).pack(side="left")
-        ttk.Button(row2, text="Batch: many URLs…",
-                   command=self._open_batch).pack(side="left", padx=8)
-        ttk.Button(row2, text="Clear", command=self._clear).pack(side="left")
+        _b_file = ttk.Button(row2, text="Choose a file on this PC…",
+                   command=self._go_file); _b_file.pack(side="left")
+        helptip.tip(_b_file, "Pick an audio or video file on your computer to transcribe.")
+        _b_batch = ttk.Button(row2, text="Batch: many URLs…",
+                   command=self._open_batch); _b_batch.pack(side="left", padx=8)
+        helptip.tip(_b_batch, "Transcribe a whole list of URLs, one after another.")
+        _b_clear = ttk.Button(row2, text="Clear", command=self._clear)
+        _b_clear.pack(side="left")
+        helptip.tip(_b_clear, "Clear the URL box and the transcript.")
         self.stop_btn = ttk.Button(row2, text="Stop", command=self._stop, state="disabled")
         self.stop_btn.pack(side="left", padx=(8, 0))
+        helptip.tip(self.stop_btn, "Stop the transcription in progress.")
         self.status = ttk.Label(row2, text="", style="Dim.TLabel")
         self.status.pack(side="left", padx=12)
 
@@ -364,15 +374,22 @@ class BatchWindow:
         self.start_btn = ttk.Button(bar, text="Start batch",
                                     style="Accent.TButton", command=self._start)
         self.start_btn.pack(side="left")
+        helptip.tip(self.start_btn, "Transcribe every URL in the list, one at a time.")
         self.stop_btn = ttk.Button(bar, text="Stop", command=self._stop, state="disabled")
         self.stop_btn.pack(side="left", padx=(8, 0))
-        ttk.Button(bar, text="Open transcripts folder",
-                   command=self._open_folder).pack(side="left", padx=8)
-        ttk.Button(bar, text="Copy last transcript",
-                   command=self._copy_last).pack(side="left")
-        ttk.Button(bar, text="Clear", command=self._clear).pack(side="left", padx=8)
-        ttk.Button(bar, text="⭐ Upgrade",
-                   command=lambda: open_upgrade(self.cfg)).pack(side="right")
+        helptip.tip(self.stop_btn, "Stop the batch after the current item.")
+        _bb_open = ttk.Button(bar, text="Open transcripts folder",
+                   command=self._open_folder); _bb_open.pack(side="left", padx=8)
+        helptip.tip(_bb_open, "Open the folder where transcripts are saved.")
+        _bb_copy = ttk.Button(bar, text="Copy last transcript",
+                   command=self._copy_last); _bb_copy.pack(side="left")
+        helptip.tip(_bb_copy, "Copy the most recently finished transcript.")
+        _bb_clear = ttk.Button(bar, text="Clear", command=self._clear)
+        _bb_clear.pack(side="left", padx=8)
+        helptip.tip(_bb_clear, "Clear the list and log.")
+        _bb_up = ttk.Button(bar, text="⭐ Upgrade",
+                   command=lambda: open_upgrade(self.cfg)); _bb_up.pack(side="right")
+        helptip.tip(_bb_up, "See what EchoQuill Pro unlocks.")
         self._last_text = ""
 
         ttk.Label(self.win, text="PROGRESS", style="Section.TLabel"

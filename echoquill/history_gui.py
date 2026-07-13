@@ -48,6 +48,7 @@ class ClipboardWindow:
         self._tab_recent.pack(side="left")
         self._tab_favs.pack(side="left", padx=4)
         self._tab_recent.bind("<Button-1>", lambda e: self._switch("recent"))
+        helptip.tip(self._tab_recent, "Show your recent transcriptions.")
         self._tab_favs.bind("<Button-1>", lambda e: self._switch("favs"))
         helptip.tip(self._tab_favs, "Show only the transcriptions you've starred.")
 
@@ -62,10 +63,12 @@ class ClipboardWindow:
         self._page_row = tk.Frame(self.win, bg=theme.BG)
         self._page_row.pack(fill="x", padx=16, pady=(6, 0))
         if self._pro:
-            ttk.Button(self._page_row, text="← Newer", width=8,
-                       command=lambda: self._flip(-1)).pack(side="left")
-            ttk.Button(self._page_row, text="Older →", width=8,
-                       command=lambda: self._flip(1)).pack(side="left", padx=(4, 10))
+            _b_newer = ttk.Button(self._page_row, text="← Newer", width=8,
+                       command=lambda: self._flip(-1)); _b_newer.pack(side="left")
+            helptip.tip(_b_newer, "Show the previous (newer) page.")
+            _b_older = ttk.Button(self._page_row, text="Older →", width=8,
+                       command=lambda: self._flip(1)); _b_older.pack(side="left", padx=(4, 10))
+            helptip.tip(_b_older, "Show the next (older) page.")
         self.page_lbl = ttk.Label(self._page_row, text="", style="Dim.TLabel")
         self.page_lbl.pack(side="left")
 
@@ -78,6 +81,7 @@ class ClipboardWindow:
         self._delall_btn = ttk.Button(bar, text="Delete all",
                                       command=self._delete_all)
         self._delall_btn.pack(side="right")
+        helptip.tip(self._delall_btn, "Delete everything shown on this tab.")
 
         # ---- scrollable list of rows ----
         self._scroll = theme.Scrollable(self.win)

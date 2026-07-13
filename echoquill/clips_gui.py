@@ -67,6 +67,7 @@ class ClipsTray:
                          font=("Segoe UI", 11), cursor="hand2")
         close.pack(side="right", padx=6)
         close.bind("<Button-1>", lambda e: self._close())
+        helptip.tip(close, "Close the clips tray.")
         _help = ("How to use the Clips tray\n\n"
                  "• CLICK a clip — it pastes straight into whatever text field "
                  "your cursor is in (the app you were just using).\n"
