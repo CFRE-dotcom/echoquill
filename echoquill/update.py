@@ -55,6 +55,13 @@ def download_and_run(url: str, status_cb=lambda s: None) -> bool:
     # per-user installs must not silently stall on an elevation prompt
     if "appdata" in sys.executable.lower():
         args.append("/CURRENTUSER")
+    # mark that an update is underway so the relaunched copy waits for the
+    # old instance's single-instance lock to clear instead of refusing.
+    try:
+        from .config import app_data_dir
+        (app_data_dir() / "update_in_progress").touch()
+    except Exception:
+        pass
     try:
         subprocess.Popen(args)
     except Exception:

@@ -771,7 +771,7 @@ class SettingsWindow:
                 update.download_and_run(u, msg)
                 msg("Installer launched \u2014 EchoQuill will close\u2026")
                 if self.on_quit:
-                    self.win.after(1500, self.on_quit)
+                    self.win.after(250, self.on_quit)
             except Exception as e:
                 msg(f"Update failed: {e}")
         threading.Thread(target=run, daemon=True).start()
@@ -845,7 +845,7 @@ class SettingsWindow:
                 update.download_and_run(url, status)
                 status("Installer launched — EchoQuill will close.")
                 if self.on_quit:
-                    self.win.after(1500, self.on_quit)
+                    self.win.after(250, self.on_quit)
             except Exception as e:
                 status(f"Update check failed: {e}")
         threading.Thread(target=run, daemon=True).start()

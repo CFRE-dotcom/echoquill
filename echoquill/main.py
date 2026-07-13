@@ -513,15 +513,49 @@ class App:
             keyboard.unhook_all()
         except Exception:
             pass
-        self.root.quit()
+        try:
+            self.root.quit()
+        except Exception:
+            pass
+        # Hard-exit: releases the single-instance mutex and unlocks app files
+        # right away, so an update installer can replace + relaunch cleanly.
+        import os
+        os._exit(0)
 
 
 def _already_running() -> bool:
-    """Windows named mutex - prevents two EchoQuills fighting over the CPU."""
+    """Windows named mutex - prevents two EchoQuills fighting over the CPU.
+
+    During an update the outgoing instance is exiting, so if an update marker
+    is fresh we wait up to ~15s for the lock to clear instead of refusing."""
     try:
-        import ctypes
-        ctypes.windll.kernel32.CreateMutexW(None, False, "EchoQuill_SingleInstance")
-        return ctypes.windll.kernel32.GetLastError() == 183  # ERROR_ALREADY_EXISTS
+        import ctypes, os, time
+        k = ctypes.windll.kernel32
+        NAME = "EchoQuill_SingleInstance"
+        # is an update in progress? (marker written by update.download_and_run)
+        deadline = time.time()
+        try:
+            from .config import app_data_dir
+            marker = app_data_dir() / "update_in_progress"
+            if marker.exists() and (time.time() - marker.stat().st_mtime) < 300:
+                deadline = time.time() + 15
+        except Exception:
+            marker = None
+        while True:
+            h = k.CreateMutexW(None, False, NAME)
+            if k.GetLastError() != 183:      # 183 = ERROR_ALREADY_EXISTS
+                # fresh lock acquired -> we are the only instance. Keep the
+                # handle open for the life of the process (intentional leak).
+                try:
+                    if marker is not None and marker.exists():
+                        marker.unlink()
+                except Exception:
+                    pass
+                return False
+            k.CloseHandle(h)                 # don't keep the stale lock alive
+            if time.time() >= deadline:
+                return True
+            time.sleep(0.4)
     except Exception:
         return False
 
