@@ -51,10 +51,10 @@ def download_and_run(url: str, status_cb=lambda s: None) -> bool:
     status_cb("Updating…")
     import subprocess
     import sys
-    args = [path, "/VERYSILENT", "/NORESTART", "/FORCECLOSEAPPLICATIONS"]
+    tail = "/VERYSILENT /NORESTART /FORCECLOSEAPPLICATIONS"
     # per-user installs must not silently stall on an elevation prompt
     if "appdata" in sys.executable.lower():
-        args.append("/CURRENTUSER")
+        tail += " /CURRENTUSER"
     # mark that an update is underway so the relaunched copy waits for the
     # old instance's single-instance lock to clear instead of refusing.
     try:
@@ -62,11 +62,21 @@ def download_and_run(url: str, status_cb=lambda s: None) -> bool:
         (app_data_dir() / "update_in_progress").touch()
     except Exception:
         pass
+    # Run the installer only AFTER EchoQuill has fully exited, so its files and
+    # single-instance lock are released first (otherwise Setup says "close all
+    # instances"). A HIDDEN wscript waiter handles the delay - no console/ping
+    # window. EchoQuill quits itself right after this returns.
+    setup = path.replace('"', '""')
+    vbs = os.path.join(tempfile.gettempdir(), "echoquill_update.vbs")
     try:
-        subprocess.Popen(args)
+        with open(vbs, "w", encoding="utf-8") as f:
+            f.write('Set sh = CreateObject("WScript.Shell")\r\n')
+            f.write('WScript.Sleep 2000\r\n')          # give EchoQuill time to exit
+            f.write('sh.Run """%s"" %s", 0, False\r\n' % (setup, tail))
+        subprocess.Popen(["wscript.exe", vbs], creationflags=0x08000000)  # CREATE_NO_WINDOW
     except Exception:
-        os.startfile(path)   # fall back to the visible wizard
-        return True
-    # the installer relaunches EchoQuill itself (see installer.iss [Run]) -
-    # no console/ping window is spawned.
+        try:
+            subprocess.Popen([path] + tail.split())
+        except Exception:
+            os.startfile(path)   # last-ditch: visible wizard
     return True
