@@ -133,27 +133,15 @@ class ClipboardWindow:
             return
         entry = chosen[0]
         ts = entry.get("ts")
-        dlg = tk.Toplevel(self.win)
-        dlg.title("Edit transcription")
-        dlg.geometry("560x300")
-        dlg.attributes("-topmost", True)
-        dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
-        theme.apply(dlg)
-        ttk.Label(dlg, text="Edit the text, then Save:",
-                  style="Dim.TLabel").pack(anchor="w", padx=14, pady=(12, 4))
-        box = theme.dark_text(dlg, wrap="word")
-        box.pack(fill="both", expand=True, padx=14)
-        box.insert("1.0", entry.get("text", ""))
-        box.focus_set()
-        row = ttk.Frame(dlg); row.pack(fill="x", padx=14, pady=10)
+        from . import edit_dialog
 
-        def save():
-            history.update(ts, box.get("1.0", "end").strip())
+        def _save(new_text):
+            history.update(ts, new_text)
             self._reload(); self._fill()
-            dlg.destroy()
-            self.status.configure(text="Saved ✓")
-        ttk.Button(row, text="Save", style="Accent.TButton", command=save).pack(side="right")
-        ttk.Button(row, text="Cancel", command=dlg.destroy).pack(side="right", padx=6)
+            self.status.configure(text="Saved \u2713")
+        edit_dialog.open_editor(self.win, entry.get("text", ""), _save,
+                                cfg=None, title="Edit transcription",
+                                anchor=self.win)
 
     def _delete_selected(self):
         chosen = self._selected()

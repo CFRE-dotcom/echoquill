@@ -185,28 +185,14 @@ class ClipsTray:
         self.refresh()
 
     def _edit_clip(self, text, ts):
-        dlg = tk.Toplevel(self.win)
-        dlg.title("Edit clip")
-        dlg.geometry("460x260")
-        dlg.attributes("-topmost", True)
-        dlg.configure(bg=theme.PANEL)
-        dlg.protocol("WM_DELETE_WINDOW", dlg.destroy)
-        tk.Label(dlg, text="Edit the text, then Save:", bg=theme.PANEL,
-                 fg=theme.DIM, font=("Segoe UI", 10)).pack(anchor="w", padx=12, pady=(12, 4))
-        box = tk.Text(dlg, wrap="word", bg=theme.FIELD, fg=theme.FG,
-                      insertbackground=theme.FG, borderwidth=0, font=("Segoe UI", 10))
-        box.pack(fill="both", expand=True, padx=12)
-        box.insert("1.0", text)
-        rw = tk.Frame(dlg, bg=theme.PANEL); rw.pack(fill="x", padx=12, pady=10)
+        from . import edit_dialog
 
-        def save():
-            history.update(ts, box.get("1.0", "end").strip())
-            dlg.destroy()
+        def _save(new_text):
+            history.update(ts, new_text)
             self.refresh()
-        tk.Button(rw, text="Save", command=save, bg=theme.ACCENT, fg="#fff",
-                  borderwidth=0, padx=14, pady=4, cursor="hand2").pack(side="right")
-        tk.Button(rw, text="Cancel", command=dlg.destroy, bg=theme.FIELD, fg=theme.FG,
-                  borderwidth=0, padx=14, pady=4, cursor="hand2").pack(side="right", padx=6)
+        cfg = getattr(self, "cfg", None)
+        edit_dialog.open_editor(self.win, text, _save, cfg=cfg,
+                                title="Edit clip", anchor=self.win)
 
     # ---------- click vs drag ----------
 

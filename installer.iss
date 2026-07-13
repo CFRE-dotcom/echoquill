@@ -5,7 +5,7 @@
 ; building dist\EchoQuill.exe with build_exe.bat.
 
 #define AppName "EchoQuill"
-#define AppVersion "1.16.4"
+#define AppVersion "1.16.5"
 #define AppExe "EchoQuill.exe"
 
 [Setup]
@@ -51,7 +51,8 @@ Type: files; Name: "{autodesktop}\EchoQuill.lnk"
 Type: files; Name: "{app}\EchoQuill.exe"
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Launch EchoQuill now"; Flags: nowait postinstall
+Filename: "{app}\{#AppExe}"; Description: "Launch EchoQuill now"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 Filename: "taskkill.exe"; Parameters: "/F /IM EchoQuill.exe"; Flags: runhidden; RunOnceId: "KillEchoQuill"
