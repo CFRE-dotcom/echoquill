@@ -10,8 +10,8 @@ class ClipboardWindow:
     def __init__(self, root: tk.Tk):
         self.win = tk.Toplevel(root)
         self.win.title("EchoQuill — Recent transcriptions")
-        self.win.geometry("600x440")
-        self.win.minsize(480, 340)
+        self.win.geometry("740x460")
+        self.win.minsize(700, 380)
         self.win.attributes("-topmost", True)
         self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
         theme.apply(self.win)
@@ -27,11 +27,12 @@ class ClipboardWindow:
         bar.pack(side="bottom", fill="x", padx=16, pady=10)
         self.status = ttk.Label(bar, text="", style="Dim.TLabel")
         self.status.pack(side="left")
+        # per-item actions on the LEFT (always visible), bulk actions on the RIGHT
+        ttk.Button(bar, text="Edit…", command=self._edit).pack(side="left", padx=(12, 4))
+        ttk.Button(bar, text="Copy", style="Accent.TButton", command=self._copy).pack(side="left", padx=4)
         ttk.Button(bar, text="Delete all", command=self._delete_all).pack(side="right", padx=(4, 0))
         ttk.Button(bar, text="Delete selected", command=self._delete_selected).pack(side="right", padx=4)
         ttk.Button(bar, text="Select all", command=self._select_all).pack(side="right", padx=4)
-        ttk.Button(bar, text="Copy", style="Accent.TButton", command=self._copy).pack(side="right", padx=4)
-        ttk.Button(bar, text="Edit…", command=self._edit).pack(side="right", padx=4)
 
         self.listbox = theme.dark_listbox(self.win, activestyle="none",
                                           selectmode="extended")
