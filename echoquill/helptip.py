@@ -52,3 +52,42 @@ def attach(parent_win, container, title, text):
     lbl.bind("<Enter>", show)
     lbl.bind("<Leave>", hide)
     return lbl
+
+
+def tip(widget, text):
+    """Attach a hover tooltip to ANY widget (buttons, entries, labels)."""
+    state = {"tip": None}
+
+    def show(_e=None):
+        if state["tip"] is not None:
+            return
+        t = tk.Toplevel(widget)
+        t.overrideredirect(True)
+        t.attributes("-topmost", True)
+        tk.Label(t, text=text, bg=theme.SIDEBAR, fg=theme.FG,
+                 font=("Segoe UI", 9), justify="left", wraplength=320,
+                 padx=9, pady=6, highlightthickness=1,
+                 highlightbackground=theme.ACCENT).pack()
+        t.update_idletasks()
+        x = widget.winfo_rootx()
+        y = widget.winfo_rooty() - t.winfo_reqheight() - 5
+        if y < 8:
+            y = widget.winfo_rooty() + widget.winfo_height() + 5
+        sw = t.winfo_screenwidth()
+        w = t.winfo_reqwidth()
+        if x + w > sw - 8:
+            x = max(8, sw - w - 8)
+        t.geometry(f"+{int(x)}+{int(y)}")
+        state["tip"] = t
+
+    def hide(_e=None):
+        if state["tip"] is not None:
+            try:
+                state["tip"].destroy()
+            except Exception:
+                pass
+            state["tip"] = None
+
+    widget.bind("<Enter>", show, add="+")
+    widget.bind("<Leave>", hide, add="+")
+    return widget
