@@ -344,35 +344,78 @@ class SettingsWindow:
                        "opera", "vivaldi", command=_set_cookies
                        ).pack(side="left", padx=8)
 
-        frow = ttk.Frame(f); frow.pack(anchor="w", pady=(8, 0))
-        ttk.Label(frow, text="Cookies file (most reliable):").pack(side="left")
-        self.cookiefile_var = tk.StringVar(value=self.cfg.get("yt_cookies_file", ""))
-        ttk.Entry(frow, textvariable=self.cookiefile_var, width=32).pack(side="left", padx=6)
-
-        def _save_cf():
-            self.cfg["yt_cookies_file"] = self.cookiefile_var.get().strip()
-            try:
-                from . import config as _c
-                _c.save(self.cfg)
-            except Exception:
-                pass
-
-        def _pick_cf():
-            from tkinter import filedialog
-            p = filedialog.askopenfilename(parent=self.win, title="Pick cookies.txt",
-                    filetypes=[("Cookies", "*.txt"), ("All files", "*.*")])
-            if p:
-                self.cookiefile_var.set(p); _save_cf()
-
-        def _clear_cf():
-            self.cookiefile_var.set(""); _save_cf()
-        ttk.Button(frow, text="Browse\u2026", command=_pick_cf).pack(side="left")
-        ttk.Button(frow, text="Clear", command=_clear_cf).pack(side="left", padx=4)
+        ttk.Label(f, style="Section.TLabel",
+                  text="YOUTUBE COOKIES (paste to sign in)").pack(anchor="w", pady=(12, 4))
         ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
-            "Chrome locks and encrypts its cookies, so yt-dlp can't read them. "
-            "Most reliable fix: install the \"Get cookies.txt LOCALLY\" browser "
-            "extension, open youtube.com, export your cookies, and pick that .txt "
-            "file here. (Or set Sign in via browser to Firefox.)")).pack(anchor="w", pady=(4, 0))
+            "YouTube trusts a logged-in session and stops the \"confirm you're "
+            "not a bot\" wall. Install the \"Get cookies.txt LOCALLY\" browser "
+            "extension, open youtube.com (logged in), click Export, and PASTE "
+            "the text here, then Save.")).pack(anchor="w")
+        self.cookie_box = theme.dark_text(f, wrap="none", height=6)
+        self.cookie_box.pack(fill="x", pady=(4, 4))
+        try:
+            import os as _os
+            _cfp = self.cfg.get("yt_cookies_file", "")
+            if _cfp and _os.path.exists(_cfp):
+                with open(_cfp, encoding="utf-8", errors="ignore") as _fh:
+                    self.cookie_box.insert("1.0", _fh.read())
+        except Exception:
+            pass
+        crow2 = ttk.Frame(f); crow2.pack(anchor="w")
+        self.cookie_status = ttk.Label(crow2, text="", style="Dim.TLabel")
+
+        def _save_cookies():
+            import os as _os
+            from . import config as _c
+            txt = self.cookie_box.get("1.0", "end").strip()
+            path = _os.path.join(str(cfgmod.app_data_dir()), "youtube_cookies.txt")
+            if not txt:
+                self.cookie_status.configure(text="Paste your cookies first"); return
+            try:
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(txt + "\n")
+                self.cfg["yt_cookies_file"] = path; _c.save(self.cfg)
+                self.cookie_status.configure(text="Saved \u2713")
+            except Exception as e:
+                self.cookie_status.configure(text=f"Save failed: {e}")
+
+        def _clear_cookies():
+            from . import config as _c
+            self.cookie_box.delete("1.0", "end")
+            self.cfg["yt_cookies_file"] = ""; _c.save(self.cfg)
+            self.cookie_status.configure(text="Cleared")
+        ttk.Button(crow2, text="Save cookies", style="Accent.TButton",
+                   command=_save_cookies).pack(side="left")
+        ttk.Button(crow2, text="Clear", command=_clear_cookies).pack(side="left", padx=6)
+        self.cookie_status.pack(side="left", padx=8)
+
+        erow = ttk.Frame(f); erow.pack(anchor="w", pady=(14, 0))
+        ttk.Label(erow, text="Video engine (yt-dlp):").pack(side="left")
+        self.engine_status = ttk.Label(erow, text="", style="Dim.TLabel")
+
+        def _upd_engine():
+            import threading
+            def run():
+                from . import ytdlp_updater as _yu
+                self.win.after(0, lambda: self.engine_status.configure(text="Updating\u2026"))
+                ver = _yu.update_now(lambda s: None)
+                self.win.after(0, lambda: self.engine_status.configure(
+                    text=(f"updated to {ver} - restart to apply" if ver
+                          else "update failed (check connection)")))
+            threading.Thread(target=run, daemon=True).start()
+        ttk.Button(erow, text="Update engine now", command=_upd_engine).pack(side="left", padx=8)
+        self.engine_status.pack(side="left")
+        try:
+            from . import ytdlp_updater as _yu
+            _v = _yu.installed_version()
+            self.engine_status.configure(text=(f"current: {_v}" if _v
+                                               else "using bundled (updates on launch)"))
+        except Exception:
+            pass
+        ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+            "EchoQuill auto-updates the engine on launch so YouTube changes "
+            "don't break downloads. Hit \"Update engine now\" to grab the very "
+            "latest immediately.")).pack(anchor="w", pady=(4, 0))
 
     def _build_clipboard(self, f):
         self._title(f, "Clipboard",

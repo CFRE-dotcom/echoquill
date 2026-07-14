@@ -574,6 +574,15 @@ def main():
         except Exception:
             pass
         return
+    # keep the video engine (yt-dlp) current: use the newest downloaded copy,
+    # and refresh it in the background so YouTube changes don't break us.
+    try:
+        from . import ytdlp_updater
+        ytdlp_updater.activate()
+        import threading
+        threading.Thread(target=lambda: ytdlp_updater.ensure(), daemon=True).start()
+    except Exception:
+        pass
     App().run()
 
 
