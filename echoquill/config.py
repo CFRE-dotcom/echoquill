@@ -88,7 +88,7 @@ AI_PROVIDERS = {
         "needs_key": False,
     },
     "Ollama Cloud": {
-        "base_url": "https://ollama.com/v1",
+        "base_url": "https://ollama.com/api",
         "models": ["deepseek-v4-flash", "deepseek-v4-pro (thinking)",
                    "gemini-3-flash-preview", "glm-5.2 (thinking)",
                    "gpt-oss", "kimi-k2.7-code (thinking)", "qwen3.5",
@@ -325,6 +325,9 @@ def load() -> dict:
                 cfg[k] = plain
             else:
                 cfg[k] = plain or ""
+    # migrate old Ollama Cloud base (ollama.com/v1 -> native /api, which works)
+    if (cfg.get("ai_base_url", "") or "").rstrip("/") == "https://ollama.com/v1":
+        cfg["ai_base_url"] = "https://ollama.com/api"
     return cfg
 
 

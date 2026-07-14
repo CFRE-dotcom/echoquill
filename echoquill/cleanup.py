@@ -133,30 +133,9 @@ def ai_enhance(text: str, cfg: dict) -> str:
         extra = auto_tone(app_name)   # built-in smart context recognition
     if extra:
         prompt += " " + extra
-    try:
-        import requests
-        resp = requests.post(
-            f"{base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": __import__("echoquill.config", fromlist=["api_model"]).api_model(cfg.get("ai_model", "gpt-4o-mini")),
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": text},
-                ],
-                "temperature": 0.2,
-                "keep_alive": "30m",   # keep local models warm (fixes 20s+ cold starts)
-            },
-            timeout=20,
-        )
-        resp.raise_for_status()
-        out = resp.json()["choices"][0]["message"]["content"].strip()
-        return out or text
-    except Exception:
-        return text  # never lose the user's words
+    from . import ai_call
+    ok, out = ai_call.chat(cfg, prompt, text, temperature=0.2, timeout=20)
+    return out if (ok and out) else text  # never lose the user's words
 
 
 def process(text: str, cfg: dict, dictionary=None) -> str:

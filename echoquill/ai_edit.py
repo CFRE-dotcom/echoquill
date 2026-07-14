@@ -13,12 +13,8 @@ def _bearer(cfg: dict) -> str:
 
 
 def transform(text: str, instruction: str, cfg: dict):
-    """Returns (ok, result). On success result is the revised text (or an
-    answer); on failure result is a short error message."""
-    import requests
-    base_url = (cfg.get("ai_base_url", "") or "").rstrip("/")
-    if not base_url:
-        return (False, "Set up AI Enhancement first (Settings > AI Enhancement).")
+    """Returns (ok, result). Rewrites/answers using the configured provider."""
+    from . import ai_call
     system = (
         "You are an in-line text editor. Apply the user's instruction to the "
         "TEXT they provide. Return ONLY the resulting text - no preamble, no "
@@ -27,19 +23,4 @@ def transform(text: str, instruction: str, cfg: dict):
         "about the text rather than an edit, answer it directly and concisely."
     )
     user = f"INSTRUCTION:\n{instruction.strip()}\n\nTEXT:\n{text}"
-    try:
-        from .config import api_model
-        r = requests.post(
-            f"{base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {_bearer(cfg)}",
-                     "Content-Type": "application/json"},
-            json={"model": api_model(cfg.get("ai_model", "gpt-4o-mini")),
-                  "messages": [{"role": "system", "content": system},
-                               {"role": "user", "content": user}],
-                  "temperature": 0.3, "keep_alive": "30m"},
-            timeout=60)
-        r.raise_for_status()
-        out = r.json()["choices"][0]["message"]["content"].strip()
-        return (True, out) if out else (False, "AI returned nothing.")
-    except Exception as e:
-        return (False, f"AI request failed: {e}")
+    return ai_call.chat(cfg, system, user, temperature=0.3)
