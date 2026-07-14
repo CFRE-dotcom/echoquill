@@ -152,12 +152,30 @@ def dark_listbox(parent, **kw) -> tk.Listbox:
 
 
 def dark_text(parent, **kw) -> tk.Text:
-    t = tk.Text(parent, bg=FIELD, fg=FG, insertbackground=FG,
+    """Dark Text with a real, always-visible right-side scrollbar.
+
+    Text + Scrollbar live in a wrapper frame; the Text's pack/grid/place are
+    rebound to the wrapper so existing callers (which .pack() the return value)
+    lay out the whole thing. No packing happens in a scroll callback, so it
+    can't cause the geometry loop that froze earlier builds."""
+    wrap = ttk.Frame(parent)
+    sb = ttk.Scrollbar(wrap, orient="vertical")
+    t = tk.Text(wrap, bg=FIELD, fg=FG, insertbackground=FG,
                 borderwidth=0, highlightthickness=0, font=FONT,
-                padx=8, pady=6, **kw)
+                padx=8, pady=6, yscrollcommand=sb.set, **kw)
+    sb.configure(command=t.yview)
+    sb.pack(side="right", fill="y")
+    t.pack(side="left", fill="both", expand=True)
 
     def _wheel(e):
         t.yview_scroll(int(-e.delta / 120), "units")
         return "break"
     t.bind("<MouseWheel>", _wheel)
+
+    # make the returned Text lay out its wrapper (so callers' .pack() works)
+    t.pack = wrap.pack
+    t.grid = wrap.grid
+    t.place = wrap.place
+    t.pack_forget = wrap.pack_forget
+    t.grid_forget = wrap.grid_forget
     return t

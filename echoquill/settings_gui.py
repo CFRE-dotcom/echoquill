@@ -904,21 +904,17 @@ class SettingsWindow:
         self._mt_q = tk.StringVar()
         self._mt_preset = tk.StringVar(value="Presets \u25be")
         self._mt_presetmenu = ttk.OptionMenu(
-            qrow, self._mt_preset, "Presets \u25be", *_pr.all_prompts(self.cfg),
-            command=lambda v: self._mt_q.set(v))
+            qrow, self._mt_preset, "Presets \u25be", *_pr.menu_items(self.cfg),
+            command=self._mt_preset_pick)
         self._mt_presetmenu.pack(side="left", padx=(6, 6))
+        helptip.tip(self._mt_presetmenu, "Pick a ready-made question, or the "
+                    "bottom item to add / edit your own.")
         _qe = ttk.Entry(qrow, textvariable=self._mt_q)
         _qe.pack(side="left", fill="x", expand=True, ipady=2)
         _qe.bind("<Return>", lambda e: self._meeting_ask())
         _ab = ttk.Button(qrow, text="Ask", style="Accent.TButton", command=self._meeting_ask)
         _ab.pack(side="left", padx=(6, 0))
         helptip.tip(_ab, "Ask anything about this recording - pick a preset or type your own question.")
-        _ap = ttk.Button(qrow, text="+", width=3, command=self._preset_add_current)
-        _ap.pack(side="left", padx=(4, 0))
-        helptip.tip(_ap, "Save the current question as a preset.")
-        _rp = ttk.Button(qrow, text="\U0001f5d1", width=3, command=self._preset_remove_current)
-        _rp.pack(side="left", padx=(2, 0))
-        helptip.tip(_rp, "Remove the current question from your presets.")
 
         arow = ttk.Frame(f); arow.pack(anchor="w", pady=(0, 6))
         _b2 = ttk.Button(arow, text="Copy transcript", command=self._meeting_copy)
@@ -1118,13 +1114,21 @@ class SettingsWindow:
         self._refresh_preset_menu()
         self._meeting_set("Preset removed")
 
+    def _mt_preset_pick(self, v):
+        from . import prompts as _pr
+        if v == _pr.MANAGE_LABEL:
+            self._mt_preset.set("Presets \u25be")
+            _pr.manage_dialog(self.win, self.cfg, self._refresh_preset_menu)
+        else:
+            self._mt_q.set(v)
+
     def _refresh_preset_menu(self):
         try:
             from . import prompts as _pr
             m = self._mt_presetmenu["menu"]
             m.delete(0, "end")
-            for q in _pr.all_prompts(self.cfg):
-                m.add_command(label=q, command=lambda v=q: self._mt_q.set(v))
+            for q in _pr.menu_items(self.cfg):
+                m.add_command(label=q, command=lambda v=q: self._mt_preset_pick(v))
         except Exception:
             pass
 

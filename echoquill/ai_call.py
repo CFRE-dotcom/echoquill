@@ -16,7 +16,7 @@ def _bearer(cfg: dict) -> str:
 
 
 def chat(cfg: dict, system: str, user: str, temperature: float = 0.3,
-         timeout: int = 60):
+         timeout: int = 180):
     """Returns (ok, text). text is the reply on success, else an error note."""
     import requests
     base = (cfg.get("ai_base_url", "") or "").rstrip("/")

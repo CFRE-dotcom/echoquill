@@ -33,5 +33,5 @@ def ask(question: str, segments, cfg: dict) -> str:
         "\"The video doesn't cover that.\" Do not use outside knowledge.\n\n"
         "TRANSCRIPT:\n" + context)
     from . import ai_call
-    ok, out = ai_call.chat(cfg, system, question, temperature=0.1, timeout=45)
+    ok, out = ai_call.chat(cfg, system, question, temperature=0.1, timeout=180)
     return out

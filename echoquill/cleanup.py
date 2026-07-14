@@ -134,7 +134,7 @@ def ai_enhance(text: str, cfg: dict) -> str:
     if extra:
         prompt += " " + extra
     from . import ai_call
-    ok, out = ai_call.chat(cfg, prompt, text, temperature=0.2, timeout=20)
+    ok, out = ai_call.chat(cfg, prompt, text, temperature=0.2, timeout=60)
     return out if (ok and out) else text  # never lose the user's words
 
 
