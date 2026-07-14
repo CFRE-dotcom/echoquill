@@ -139,13 +139,28 @@ def dark_listbox(parent, **kw) -> tk.Listbox:
 
 
 def dark_text(parent, **kw) -> tk.Text:
+    """A dark Text with a REAL vertical scrollbar that auto-appears once the
+    content grows past the box (like a normal editor)."""
+    sb = ttk.Scrollbar(parent, orient="vertical")
     t = tk.Text(parent, bg=FIELD, fg=FG, insertbackground=FG,
                 borderwidth=0, highlightthickness=0, font=FONT,
                 padx=8, pady=6, **kw)
 
+    def _yset(lo, hi):
+        # show the bar only when there's something to scroll
+        try:
+            if float(lo) <= 0.0 and float(hi) >= 1.0:
+                sb.pack_forget()
+            elif not sb.winfo_ismapped():
+                sb.pack(side="right", fill="y")
+        except Exception:
+            pass
+        sb.set(lo, hi)
+
+    t.configure(yscrollcommand=_yset)
+    sb.configure(command=t.yview)
+
     def _wheel(e):
-        # scroll THIS text box, and stop the event bubbling to any outer
-        # scroll region — so scrolling happens inside the text, not the page.
         t.yview_scroll(int(-e.delta / 120), "units")
         return "break"
     t.bind("<MouseWheel>", _wheel)

@@ -804,10 +804,19 @@ class SettingsWindow:
 
     def _build_meeting(self, f):
         from . import meeting, helptip
-        self._title(f, "Meeting / Record",
-                    "Record what you HEAR on this PC (calls, webinars, any "
-                    "playing video - including Skool) and transcribe it "
-                    "locally. No link, no URL, no DevTools.")
+        _trow = ttk.Frame(f); _trow.pack(fill="x", anchor="w")
+        ttk.Label(_trow, text="Meeting / Record", style="Title.TLabel").pack(side="left")
+        helptip.attach(self.win, _trow, "Meeting / Record - help",
+                       "Record what you HEAR on this PC - calls, webinars, any "
+                       "playing video (incl. Skool) - plus your mic and/or the "
+                       "full screen as MP4, then transcribe and Ask AI, all "
+                       "locally.\n\n1) Tick mic/screen if you want them.\n"
+                       "2) Name it.\n3) Start, then Stop & transcribe.").pack(side="left", padx=8)
+        ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+            "Record what you HEAR on this PC (calls, webinars, any playing "
+            "video - including Skool) and transcribe it locally. No link, no "
+            "URL, no DevTools.")).pack(anchor="w")
+        ttk.Frame(f, height=10).pack()
 
         _pro = True
         try:
@@ -844,7 +853,7 @@ class SettingsWindow:
         helptip.tip(_cs, "Also record the whole screen to an MP4 next to the transcript.")
 
         nrow = ttk.Frame(f); nrow.pack(fill="x", pady=(0, 6))
-        ttk.Label(nrow, text="Name (required):").pack(side="left")
+        ttk.Label(nrow, text="Name this meeting / recording (required):").pack(side="left")
         self._mt_name = tk.StringVar()
         _ne = ttk.Entry(nrow, textvariable=self._mt_name)
         _ne.pack(side="left", fill="x", expand=True, padx=(8, 0), ipady=2)
@@ -864,10 +873,26 @@ class SettingsWindow:
         self._mt_status = ttk.Label(crow, text="", style="Dim.TLabel")
         self._mt_status.pack(side="left", padx=10)
 
+        from . import prompts as _pr
+        qrow = ttk.Frame(f); qrow.pack(fill="x", pady=(0, 4))
+        ttk.Label(qrow, text="Ask AI:").pack(side="left")
+        self._mt_q = tk.StringVar()
+        self._mt_preset = tk.StringVar(value="Presets \u25be")
+        self._mt_presetmenu = ttk.OptionMenu(
+            qrow, self._mt_preset, "Presets \u25be", *_pr.all_prompts(self.cfg),
+            command=lambda v: self._mt_q.set(v))
+        self._mt_presetmenu.pack(side="left", padx=(6, 6))
+        _qe = ttk.Entry(qrow, textvariable=self._mt_q)
+        _qe.pack(side="left", fill="x", expand=True, ipady=2)
+        _qe.bind("<Return>", lambda e: self._meeting_ask())
+        _ab = ttk.Button(qrow, text="Ask", style="Accent.TButton", command=self._meeting_ask)
+        _ab.pack(side="left", padx=(6, 0))
+        helptip.tip(_ab, "Ask anything about this recording - pick a preset or type your own question.")
+        _mb = ttk.Button(qrow, text="\u2699", width=3, command=self._manage_presets)
+        _mb.pack(side="left", padx=(4, 0))
+        helptip.tip(_mb, "Add or remove your own preset questions.")
+
         arow = ttk.Frame(f); arow.pack(anchor="w", pady=(0, 6))
-        _b1 = ttk.Button(arow, text="Summarize with AI", command=self._meeting_summarize)
-        _b1.pack(side="left")
-        helptip.tip(_b1, "Turn the transcript into key points + action items with AI.")
         _b2 = ttk.Button(arow, text="Copy transcript", command=self._meeting_copy)
         _b2.pack(side="left", padx=6)
         helptip.tip(_b2, "Copy the transcript to the clipboard.")
@@ -1026,6 +1051,76 @@ class SettingsWindow:
             except Exception:
                 pass
         threading.Thread(target=run, daemon=True).start()
+
+    def _meeting_ask(self):
+        import threading
+        text = self._mt_out.get("1.0", "end").strip()
+        if not text:
+            self._meeting_set("Transcribe something first."); return
+        q = self._mt_q.get().strip()
+        if not q or q.startswith("Presets"):
+            self._meeting_set("Pick a preset or type a question."); return
+        self._meeting_set("Asking AI\u2026")
+
+        def run():
+            from . import ai_edit
+            ok, res = ai_edit.transform(text, q, self.cfg)
+
+            def show():
+                if ok:
+                    self._mt_out.insert("1.0", f"=== AI \u2014 {q} ===\n{res}"
+                                        "\n\n=== TRANSCRIPT ===\n")
+                    self._meeting_set("Answer added \u2713")
+                else:
+                    self._meeting_set(res)
+            self.win.after(0, show)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _refresh_preset_menu(self):
+        try:
+            from . import prompts as _pr
+            m = self._mt_presetmenu["menu"]
+            m.delete(0, "end")
+            for q in _pr.all_prompts(self.cfg):
+                m.add_command(label=q, command=lambda v=q: self._mt_q.set(v))
+        except Exception:
+            pass
+
+    def _manage_presets(self):
+        from . import prompts as _pr
+        dlg = tk.Toplevel(self.win)
+        dlg.title("Manage Ask-AI presets")
+        dlg.geometry("480x380")
+        dlg.attributes("-topmost", True)
+        theme.apply(dlg)
+        ttk.Label(dlg, text="Ask-AI preset questions", style="Title.TLabel"
+                  ).pack(anchor="w", padx=14, pady=(12, 6))
+        lb = theme.dark_listbox(dlg, height=10)
+        lb.pack(fill="both", expand=True, padx=14)
+
+        def reload():
+            lb.delete(0, "end")
+            for q in _pr.all_prompts(self.cfg):
+                lb.insert("end", "  " + q)
+        reload()
+        row = ttk.Frame(dlg); row.pack(fill="x", padx=14, pady=8)
+        var = tk.StringVar()
+        ttk.Entry(row, textvariable=var).pack(side="left", fill="x", expand=True, ipady=2)
+
+        def add():
+            _pr.add_prompt(self.cfg, var.get()); var.set("")
+            reload(); self._refresh_preset_menu()
+
+        def rem():
+            sel = lb.curselection()
+            if sel:
+                _pr.remove_prompt(self.cfg, lb.get(sel[0]).strip())
+                reload(); self._refresh_preset_menu()
+        ttk.Button(row, text="Add", command=add).pack(side="left", padx=(6, 0))
+        brow = ttk.Frame(dlg); brow.pack(fill="x", padx=14, pady=(0, 10))
+        ttk.Button(brow, text="Remove selected", command=rem).pack(side="left")
+        ttk.Button(brow, text="Done", style="Accent.TButton",
+                   command=dlg.destroy).pack(side="right")
 
     def _meeting_summarize(self):
         import threading

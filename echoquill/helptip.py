@@ -1,12 +1,15 @@
 """Hover help: a '?' icon with a how-to popover, and tip() for any widget.
 
-Robust against the 'tooltip maps -> spurious <Leave> -> tooltip vanishes'
-problem that happens for small widgets inside scrolling canvases: we only
-hide when the pointer is genuinely off the widget (and off the tooltip)."""
+Rules: only ONE tooltip is ever open app-wide, and it always closes when the
+pointer leaves the widget (a short poll catches missed <Leave> events, e.g.
+inside scrolling lists)."""
 
 import tkinter as tk
 
 from . import theme
+
+# single global tooltip state — guarantees only one is ever visible
+_S = {"tip": None, "after": None, "owner": None}
 
 
 def _pointer_over(widget) -> bool:
@@ -19,14 +22,40 @@ def _pointer_over(widget) -> bool:
         return False
 
 
-def _bind_tooltip(widget, render):
-    """render(toplevel) fills the tooltip. Shows on hover, hides on real exit."""
-    st = {"tip": None, "after": None}
+def _hide_now():
+    owner = _S.get("owner")
+    if _S.get("after") is not None and owner is not None:
+        try:
+            owner.after_cancel(_S["after"])
+        except Exception:
+            pass
+    _S["after"] = None
+    if _S.get("tip") is not None:
+        try:
+            _S["tip"].destroy()
+        except Exception:
+            pass
+    _S["tip"] = None
+    _S["owner"] = None
 
-    def do_show():
-        st["after"] = None
-        if st["tip"] is not None or not _pointer_over(widget):
+
+def _bind_tooltip(widget, render):
+    def _poll():
+        if _S.get("tip") is None or _S.get("owner") is not widget:
             return
+        if not _pointer_over(widget):
+            _hide_now()
+            return
+        try:
+            widget.after(200, _poll)
+        except Exception:
+            pass
+
+    def _do_show():
+        _S["after"] = None
+        if not _pointer_over(widget):
+            return
+        _hide_now()                      # ensure only one exists
         t = tk.Toplevel(widget)
         t.overrideredirect(True)
         t.attributes("-topmost", True)
@@ -37,7 +66,7 @@ def _bind_tooltip(widget, render):
         render(t)
         t.update_idletasks()
         px, py = widget.winfo_pointerxy()
-        x, y = px + 14, py + 20                     # offset from cursor
+        x, y = px + 14, py + 20
         sw, sh = t.winfo_screenwidth(), t.winfo_screenheight()
         w, h = t.winfo_reqwidth(), t.winfo_reqheight()
         if x + w > sw - 8:
@@ -45,38 +74,30 @@ def _bind_tooltip(widget, render):
         if y + h > sh - 8:
             y = max(8, py - h - 12)
         t.geometry(f"+{int(x)}+{int(y)}")
-        st["tip"] = t
+        _S["tip"] = t
+        _S["owner"] = widget
+        _poll()
 
     def show(_e=None):
-        if st["after"] is None and st["tip"] is None:
-            st["after"] = widget.after(250, do_show)
+        _hide_now()
+        try:
+            _S["owner"] = widget
+            _S["after"] = widget.after(250, _do_show)
+        except Exception:
+            pass
 
     def hide(_e=None):
-        # ignore the spurious <Leave> fired when the tooltip window maps
-        if _pointer_over(widget):
-            return
-        if st["after"] is not None:
-            try:
-                widget.after_cancel(st["after"])
-            except Exception:
-                pass
-            st["after"] = None
-        if st["tip"] is not None:
-            try:
-                st["tip"].destroy()
-            except Exception:
-                pass
-            st["tip"] = None
+        _hide_now()
 
     widget.bind("<Enter>", show, add="+")
     widget.bind("<Leave>", hide, add="+")
     widget.bind("<Button-1>", hide, add="+")
-    widget.bind("<Destroy>", lambda e: hide(), add="+")
+    widget.bind("<Destroy>", lambda e: _hide_now(), add="+")
     return widget
 
 
 def tip(widget, text):
-    """Attach a hover tooltip to ANY widget (buttons, entries, icons, labels)."""
+    """Attach a hover tooltip to ANY widget."""
     def render(t):
         tk.Label(t, text=text, bg=theme.SIDEBAR, fg=theme.FG,
                  font=("Segoe UI", 9), justify="left", wraplength=320,
@@ -86,7 +107,7 @@ def tip(widget, text):
 
 
 def attach(parent_win, container, title, text):
-    """Add a small '?' to `container`; hovering shows a readable how-to."""
+    """Add a small blue '?' to `container`; hovering shows a readable how-to."""
     lbl = tk.Label(container, text=" ? ", bg=theme.ACCENT, fg="#ffffff",
                    font=("Segoe UI Semibold", 9), cursor="question_arrow")
 
