@@ -865,11 +865,11 @@ class SettingsWindow:
                 self._meeting_set("Screen capture needs the latest build.")
                 return
             import os, datetime
-            from .media_gui import transcripts_dir, safe_filename
+            from .media_gui import meetings_dir, safe_filename
             nm = (self._mt_name.get().strip() or
                   datetime.datetime.now().strftime("Recording %Y-%m-%d %H%M"))
             self._mt_video_path = os.path.join(
-                transcripts_dir(self.cfg), safe_filename(nm)[:-4] + ".mp4")
+                meetings_dir(self.cfg), safe_filename(nm)[:-4] + ".mp4")
             self._mt_rec = meeting.ScreenRecorder(
                 self._mt_video_path, include_mic=self._mt_mic.get())
         else:
@@ -929,7 +929,7 @@ class SettingsWindow:
                 if getattr(self, "_mt_video_path", None):
                     self._meeting_set("Done \u2713 (MP4 video + transcript saved)")
                 else:
-                    self._meeting_set("Done \u2713 (saved to your Transcriptions folder)")
+                    self._meeting_set("Done \u2713 (saved to your Meetings folder)")
             self.win.after(0, show)
             # auto-save
             try:
@@ -938,7 +938,7 @@ class SettingsWindow:
                 name = (self._mt_name.get().strip() or
                         __import__("datetime").datetime.now().strftime(
                             "Meeting %Y-%m-%d %H%M"))
-                folder = transcripts_dir(self.cfg)
+                folder = meetings_dir(self.cfg)
                 out = os.path.join(folder, safe_filename(name))
                 base, n = out, 2
                 while os.path.exists(out):

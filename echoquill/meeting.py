@@ -56,6 +56,15 @@ class MeetingRecorder:
 
     # ---------- capture loop ----------
     def _loop(self):
+        import ctypes
+        _co = False
+        try:
+            # WASAPI/soundcard uses COM; a background thread must init it,
+            # otherwise you get 0x800401F0 (CO_E_NOTINITIALIZED).
+            ctypes.windll.ole32.CoInitialize(None)
+            _co = True
+        except Exception:
+            pass
         try:
             import soundcard as sc
             spk = sc.default_speaker()
@@ -86,6 +95,12 @@ class MeetingRecorder:
         except Exception as e:  # surfaced by stop()
             self._error = str(e)
             self._running = False
+        finally:
+            if _co:
+                try:
+                    ctypes.windll.ole32.CoUninitialize()
+                except Exception:
+                    pass
 
 
 def save_wav(audio: "np.ndarray", path: str):

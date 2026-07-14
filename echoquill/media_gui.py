@@ -157,11 +157,31 @@ def download_video(url, cfg, dest_dir, status_cb=lambda s: None, name=None) -> s
     return (info or {}).get("title") or "video"
 
 
-def transcripts_dir(cfg) -> str:
-    d = cfg.get("transcripts_dir") or os.path.join(
-        os.path.expanduser("~"), "Documents", "EchoQuill Transcriptions")
+def base_dir(cfg) -> str:
+    """The one EchoQuill folder that holds all the organized subfolders."""
+    d = (cfg or {}).get("output_dir") or os.path.join(
+        os.path.expanduser("~"), "Documents", "EchoQuill")
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def _subfolder(cfg, name) -> str:
+    d = os.path.join(base_dir(cfg), name)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def transcripts_dir(cfg) -> str:
+    # honor a legacy explicit override if the user set one
+    if (cfg or {}).get("transcripts_dir"):
+        d = cfg["transcripts_dir"]
+        os.makedirs(d, exist_ok=True)
+        return d
+    return _subfolder(cfg, "Transcriptions")
+
+
+def meetings_dir(cfg) -> str:
+    return _subfolder(cfg, "Meetings")
 
 
 class MediaWindow:
