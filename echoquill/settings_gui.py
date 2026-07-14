@@ -1079,6 +1079,20 @@ class SettingsWindow:
             self.win.after(0, show)
         threading.Thread(target=run, daemon=True).start()
 
+    def _preset_add_current(self):
+        from . import prompts as _pr
+        q = self._mt_q.get().strip()
+        if not q or q.startswith("Presets"):
+            self._meeting_set("Type a question first, then + to save it."); return
+        _pr.add_prompt(self.cfg, q); self._refresh_preset_menu()
+        self._meeting_set("Preset saved \u2713")
+
+    def _preset_remove_current(self):
+        from . import prompts as _pr
+        _pr.remove_prompt(self.cfg, self._mt_q.get().strip())
+        self._refresh_preset_menu()
+        self._meeting_set("Preset removed")
+
     def _refresh_preset_menu(self):
         try:
             from . import prompts as _pr
