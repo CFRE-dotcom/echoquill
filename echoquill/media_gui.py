@@ -110,6 +110,47 @@ def safe_filename(title: str) -> str:
     return (name[:120] or "transcript") + ".txt"
 
 
+def _safe_stem(title: str) -> str:
+    return safe_filename(title)[:-4]  # strip the .txt
+
+
+def _unique_path(p: str) -> str:
+    base, ext = os.path.splitext(p)
+    q, n = p, 2
+    while os.path.exists(q):
+        q = f"{base} ({n}){ext}"
+        n += 1
+    return q
+
+
+def _media_opts(url, cfg, tmpl, fmt):
+    opts = {"format": fmt, "outtmpl": tmpl,
+            "quiet": True, "no_warnings": True, "noplaylist": True}
+    low = (url or "").lower()
+    if "skool.com" in low or ".m3u8" in low:
+        opts["http_headers"] = {"Referer": "https://www.skool.com/",
+                                "Origin": "https://www.skool.com"}
+    br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
+    if br:
+        try:
+            opts["cookiesfrombrowser"] = (br,)
+        except Exception:
+            pass
+    return opts
+
+
+def download_video(url, cfg, dest_dir, status_cb=lambda s: None) -> str:
+    """Download the FULL video (not just audio) into dest_dir. Returns title."""
+    import yt_dlp
+    status_cb("Downloading video…")
+    tmpl = os.path.join(dest_dir, "%(title).120B.%(ext)s")
+    opts = _media_opts(url, cfg, tmpl, "bv*+ba/b")
+    opts["merge_output_format"] = "mp4"
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+    return (info or {}).get("title") or "video"
+
+
 def transcripts_dir(cfg) -> str:
     d = cfg.get("transcripts_dir") or os.path.join(
         os.path.expanduser("~"), "Documents", "EchoQuill Transcriptions")
@@ -179,6 +220,21 @@ class MediaWindow:
         helptip.tip(self.stop_btn, "Stop the transcription in progress.")
         self.status = ttk.Label(row2, text="", style="Dim.TLabel")
         self.status.pack(side="left", padx=12)
+
+        keeprow = ttk.Frame(self.win)
+        keeprow.pack(fill="x", padx=18, pady=(4, 0))
+        self.keep_audio_var = tk.BooleanVar(value=False)
+        self.keep_video_var = tk.BooleanVar(value=False)
+        _ka = ttk.Checkbutton(keeprow, text="Keep audio file",
+                              variable=self.keep_audio_var)
+        _ka.pack(side="left")
+        _kv = ttk.Checkbutton(keeprow, text="Keep video file",
+                              variable=self.keep_video_var)
+        _kv.pack(side="left", padx=(16, 0))
+        helptip.tip(_ka, "Also save the downloaded audio next to the transcript "
+                         "(off by default).")
+        helptip.tip(_kv, "Also download and save the full video file "
+                         "(off by default).")
 
         # search inside the transcript
         row3 = ttk.Frame(self.win)
@@ -276,6 +332,20 @@ class MediaWindow:
                 out = base[:-4] + f" ({n}).txt"; n += 1
             with open(out, "w", encoding="utf-8") as f:
                 f.write(header + " ".join(parts).strip())
+            # optional: keep the audio and/or full video (checkboxes, URL only)
+            if is_url and not getattr(self, "_cancel", False):
+                try:
+                    if self.keep_audio_var.get() and path and os.path.exists(path):
+                        ext = os.path.splitext(path)[1] or ".m4a"
+                        adst = _unique_path(os.path.join(folder, _safe_stem(title) + ext))
+                        import shutil as _sh
+                        _sh.copy2(path, adst)
+                        self._set_status(f"Saved audio: {os.path.basename(adst)}")
+                    if self.keep_video_var.get():
+                        download_video(source, self.cfg, folder, self._set_status)
+                        self._set_status("Saved video \u2713")
+                except Exception as _ke:
+                    self._set_status(f"(Keep-file note: {_ke})")
             _use_one(self.cfg)
             left = _allowance(self.cfg)
             self._set_status(f"Done ✓ — saved automatically: {os.path.basename(out)}"
