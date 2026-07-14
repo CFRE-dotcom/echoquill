@@ -138,6 +138,7 @@ DEFAULTS = {
     # Language code like "en", or "auto" to detect
     "language": "auto",
     "yt_cookies_browser": "",
+    "yt_cookies_file": "",   # path to an exported cookies.txt (most reliable for YouTube)
     "custom_prompts": [],   # "" off, else chrome/edge/firefox/brave for member-only videos
     # How text is inserted: "type" (keystrokes), "paste" (Ctrl+V),
     # "clipboard" (copy only - community-requested clipboard-only mode)

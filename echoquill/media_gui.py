@@ -64,6 +64,11 @@ def friendly_dl_error(e) -> str:
         return ("YouTube asked to verify you're not a bot. Turn on Settings > "
                 "Transcription > \"Sign in via browser\" and pick the browser "
                 "you're logged into YouTube with, then try again.")
+    if "cookie" in low and ("copy" in low or "database" in low or "chrome" in low):
+        return ("Can't read Chrome's cookies (Chrome locks/encrypts them). "
+                "Either switch Settings > Transcription > Sign in via browser to "
+                "FIREFOX, or export a cookies.txt and set it in Settings > "
+                "Transcription > Cookies file.")
     if "403" in low or "forbidden" in low:
         return ("Access denied - the signed link may have expired or needs your "
                 "login. Grab a fresh link, and/or turn on Settings > "
@@ -101,8 +106,11 @@ def fetch_audio_info(url: str, status_cb, cfg=None):
                                 "Origin": "https://www.skool.com"}
     # Optional: pull videos that require you to be logged in, using the cookies
     # from your browser (Settings > Transcription > "Sign in via browser").
+    cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
     br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
-    if br:
+    if cf and os.path.exists(cf):
+        opts["cookiefile"] = cf          # exported cookies.txt (most reliable)
+    elif br:
         try:
             opts["cookiesfrombrowser"] = (br,)
         except Exception:
@@ -146,8 +154,11 @@ def _media_opts(url, cfg, tmpl, fmt):
     if "skool.com" in low or ".m3u8" in low:
         opts["http_headers"] = {"Referer": "https://www.skool.com/",
                                 "Origin": "https://www.skool.com"}
+    cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
     br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
-    if br:
+    if cf and os.path.exists(cf):
+        opts["cookiefile"] = cf          # exported cookies.txt (most reliable)
+    elif br:
         try:
             opts["cookiesfrombrowser"] = (br,)
         except Exception:

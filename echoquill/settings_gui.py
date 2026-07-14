@@ -344,6 +344,36 @@ class SettingsWindow:
                        "opera", "vivaldi", command=_set_cookies
                        ).pack(side="left", padx=8)
 
+        frow = ttk.Frame(f); frow.pack(anchor="w", pady=(8, 0))
+        ttk.Label(frow, text="Cookies file (most reliable):").pack(side="left")
+        self.cookiefile_var = tk.StringVar(value=self.cfg.get("yt_cookies_file", ""))
+        ttk.Entry(frow, textvariable=self.cookiefile_var, width=32).pack(side="left", padx=6)
+
+        def _save_cf():
+            self.cfg["yt_cookies_file"] = self.cookiefile_var.get().strip()
+            try:
+                from . import config as _c
+                _c.save(self.cfg)
+            except Exception:
+                pass
+
+        def _pick_cf():
+            from tkinter import filedialog
+            p = filedialog.askopenfilename(parent=self.win, title="Pick cookies.txt",
+                    filetypes=[("Cookies", "*.txt"), ("All files", "*.*")])
+            if p:
+                self.cookiefile_var.set(p); _save_cf()
+
+        def _clear_cf():
+            self.cookiefile_var.set(""); _save_cf()
+        ttk.Button(frow, text="Browse\u2026", command=_pick_cf).pack(side="left")
+        ttk.Button(frow, text="Clear", command=_clear_cf).pack(side="left", padx=4)
+        ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+            "Chrome locks and encrypts its cookies, so yt-dlp can't read them. "
+            "Most reliable fix: install the \"Get cookies.txt LOCALLY\" browser "
+            "extension, open youtube.com, export your cookies, and pick that .txt "
+            "file here. (Or set Sign in via browser to Firefox.)")).pack(anchor="w", pady=(4, 0))
+
     def _build_clipboard(self, f):
         self._title(f, "Clipboard",
                     "Your recent transcriptions, always within reach.")
