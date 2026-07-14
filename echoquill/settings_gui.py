@@ -318,6 +318,31 @@ class SettingsWindow:
             "\nTip: it's also one right-click away — right-click the mic pill "
             "→ Transcribe video / URL.")).pack(anchor="w")
 
+        ttk.Label(f, style="Section.TLabel",
+                  text="MEMBER-ONLY / SKOOL VIDEOS").pack(anchor="w", pady=(18, 4))
+        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
+            "Skool, private YouTube/Vimeo and other login-gated videos need "
+            "your browser session. Pick the browser you're signed into and "
+            "EchoQuill reuses its cookies just for the download. Paste the "
+            "lesson's embedded video link — or the signed .m3u8 from the "
+            "browser Network tab — into the transcriber.")).pack(anchor="w")
+        crow = ttk.Frame(f); crow.pack(anchor="w", pady=(6, 0))
+        ttk.Label(crow, text="Sign in via browser:").pack(side="left")
+        self.cookies_var = tk.StringVar(
+            value=(self.cfg.get("yt_cookies_browser", "") or "Off"))
+
+        def _set_cookies(choice):
+            self.cfg["yt_cookies_browser"] = "" if choice == "Off" else choice
+            try:
+                from . import config as _c
+                _c.save(self.cfg)
+            except Exception:
+                pass
+        ttk.OptionMenu(crow, self.cookies_var, self.cookies_var.get(),
+                       "Off", "chrome", "edge", "firefox", "brave", "chromium",
+                       "opera", "vivaldi", command=_set_cookies
+                       ).pack(side="left", padx=8)
+
     def _build_clipboard(self, f):
         self._title(f, "Clipboard",
                     "Your recent transcriptions, always within reach.")

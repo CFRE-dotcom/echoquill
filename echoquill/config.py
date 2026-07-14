@@ -138,6 +138,7 @@ DEFAULTS = {
     "model": "base",
     # Language code like "en", or "auto" to detect
     "language": "auto",
+    "yt_cookies_browser": "",   # "" off, else chrome/edge/firefox/brave for member-only videos
     # How text is inserted: "type" (keystrokes), "paste" (Ctrl+V),
     # "clipboard" (copy only - community-requested clipboard-only mode)
     "insertion_mode": "paste",

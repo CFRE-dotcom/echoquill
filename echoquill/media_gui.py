@@ -10,7 +10,7 @@ import threading
 from . import config as cfgmod
 from . import helptip
 
-MEDIA_HELP = 'How to transcribe video and audio\n\n- Paste a URL from YouTube (incl. Shorts), TikTok, and ~1,800 sites, then click Transcribe URL.\n- Choose a file on this PC to transcribe any audio or video file.\n- Batch: many URLs - paste a whole list; each is transcribed one at a time and auto-saved (named after the video) in your Transcriptions folder.\n- Stop cancels a transcription in progress.\n- Find in transcript: type a word to highlight it, with timestamps.\n\nEverything runs on your PC - nothing is uploaded.'
+MEDIA_HELP = 'How to transcribe video and audio\n\n- Paste a URL from YouTube (incl. Shorts), TikTok, and ~1,800 sites, then click Transcribe URL.\n- Choose a file on this PC to transcribe any audio or video file.\n- Batch: many URLs - paste a whole list; each is transcribed one at a time and auto-saved (named after the video) in your Transcriptions folder.\n- Stop cancels a transcription in progress.\n- Find in transcript: type a word to highlight it, with timestamps.\n- Skool / members-only: paste the embedded video link in the lesson (YouTube, Vimeo, Loom or Wistia). For the Skool native player, open the video, press F12 - Network tab - filter m3u8, and paste that .m3u8 link. For login-gated videos turn on Settings - Transcription - Sign in via browser.\n\nEverything runs on your PC - nothing is uploaded.'
 
 
 
@@ -65,8 +65,12 @@ from tkinter import ttk, filedialog
 from . import theme
 
 
-def fetch_audio_info(url: str, status_cb):
-    """Download best-audio for a URL. Returns (path, video_title)."""
+def fetch_audio_info(url: str, status_cb, cfg=None):
+    """Download best-audio for a URL. Returns (path, video_title).
+
+    Handles Skool: its native player streams signed HLS (.m3u8) from a CDN that
+    demands a Referer header, and member-only videos need your browser login.
+    """
     import yt_dlp
     tmpdir = tempfile.mkdtemp(prefix="echoquill_")
     status_cb("Downloading audio…")
@@ -75,6 +79,18 @@ def fetch_audio_info(url: str, status_cb):
         "outtmpl": os.path.join(tmpdir, "audio.%(ext)s"),
         "quiet": True, "no_warnings": True, "noplaylist": True,
     }
+    low = (url or "").lower()
+    if "skool.com" in low or ".m3u8" in low:
+        opts["http_headers"] = {"Referer": "https://www.skool.com/",
+                                "Origin": "https://www.skool.com"}
+    # Optional: pull videos that require you to be logged in, using the cookies
+    # from your browser (Settings > Transcription > "Sign in via browser").
+    br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
+    if br:
+        try:
+            opts["cookiesfrombrowser"] = (br,)
+        except Exception:
+            pass
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
     title = (info or {}).get("title") or "transcript"
@@ -227,7 +243,7 @@ class MediaWindow:
         try:
             self.win.after(0, lambda: self.out.delete("1.0", "end"))
             if is_url:
-                path, title = fetch_audio_info(source, self._set_status)
+                path, title = fetch_audio_info(source, self._set_status, self.cfg)
             else:
                 path = source
                 title = os.path.splitext(os.path.basename(source))[0]
@@ -452,7 +468,7 @@ class BatchWindow:
                 break
             try:
                 self._log(f"[{i}/{len(urls)}] Downloading: {url}")
-                path, title = fetch_audio_info(url, lambda s: None)
+                path, title = fetch_audio_info(url, lambda s: None, self.cfg)
                 self._log(f"[{i}/{len(urls)}] Transcribing: {title}")
                 model = self.transcriber.load()
                 with self.transcriber._lock:
