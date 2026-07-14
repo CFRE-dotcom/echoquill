@@ -172,3 +172,48 @@ def clear():
         HISTORY_PATH.unlink(missing_ok=True)
     except Exception:
         pass
+
+
+def count() -> int:
+    """Number of stored transcriptions (cheap — counts lines, no JSON parse)."""
+    try:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+            return sum(1 for ln in f if ln.strip())
+    except FileNotFoundError:
+        return 0
+
+
+def page(page_index: int, page_size: int, search: str = None):
+    """Lazy, lightweight paging. Returns (entries, total_matching).
+
+    Reads raw lines (fast) and only JSON-parses the rows actually shown —
+    so browsing thousands of entries stays snappy. A search scans all rows
+    (only while the user is typing)."""
+    try:
+        with open(HISTORY_PATH, "r", encoding="utf-8") as f:
+            lines = [ln for ln in f if ln.strip()]
+    except FileNotFoundError:
+        return [], 0
+    lines.reverse()  # newest first
+    if search:
+        s = search.lower()
+        matched = []
+        for ln in lines:
+            try:
+                e = json.loads(ln)
+            except Exception:
+                continue
+            if s in e.get("text", "").lower():
+                matched.append(e)
+        total = len(matched)
+        start = max(0, page_index) * page_size
+        return matched[start:start + page_size], total
+    total = len(lines)
+    start = max(0, page_index) * page_size
+    out = []
+    for ln in lines[start:start + page_size]:
+        try:
+            out.append(json.loads(ln))
+        except Exception:
+            pass
+    return out, total

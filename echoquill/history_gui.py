@@ -122,14 +122,12 @@ class ClipboardWindow:
                 self._page_row.pack(fill="x", padx=16, pady=(6, 0),
                                     before=self._scroll)
             self._delall_btn.configure(text="Delete all")
-            data = self._recent_all()
-            if term:
-                data = [e for e in data if term in e.get("text", "").lower()]
-            n = len(data)
+            # lazy: only the current page is JSON-parsed (snappy with 1000s)
+            page, n = history.page(self._page, self._page_size, term or None)
             pages = max(1, (n + self._page_size - 1) // self._page_size)
-            self._page = max(0, min(self._page, pages - 1))
-            start = self._page * self._page_size
-            page = data[start:start + self._page_size]
+            if self._page > pages - 1:
+                self._page = pages - 1
+                page, n = history.page(self._page, self._page_size, term or None)
             self.page_lbl.configure(
                 text=(f"Page {self._page + 1} of {pages} · {n:,} total"
                       if n else "Nothing here yet"))

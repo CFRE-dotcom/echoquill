@@ -139,6 +139,14 @@ def dark_listbox(parent, **kw) -> tk.Listbox:
 
 
 def dark_text(parent, **kw) -> tk.Text:
-    return tk.Text(parent, bg=FIELD, fg=FG, insertbackground=FG,
-                   borderwidth=0, highlightthickness=0, font=FONT,
-                   padx=8, pady=6, **kw)
+    t = tk.Text(parent, bg=FIELD, fg=FG, insertbackground=FG,
+                borderwidth=0, highlightthickness=0, font=FONT,
+                padx=8, pady=6, **kw)
+
+    def _wheel(e):
+        # scroll THIS text box, and stop the event bubbling to any outer
+        # scroll region — so scrolling happens inside the text, not the page.
+        t.yview_scroll(int(-e.delta / 120), "units")
+        return "break"
+    t.bind("<MouseWheel>", _wheel)
+    return t
