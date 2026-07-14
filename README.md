@@ -4,10 +4,10 @@
 
 # 🎙 EchoQuill
 
-### Speak anywhere you can type. Free. Offline. Private.
+### Capture, transcribe & summarize anything you hear or see.
 
-**Voice dictation for Windows that keeps your voice on your computer** — powered by local Whisper AI.
-No subscription. No account. No audio ever uploaded.
+**The private, local Swiss-army knife for voice & video on Windows** — powered by local Whisper AI.
+Dictate into any app, transcribe YouTube / Skool / 1,800+ sites, and record meetings & your screen — all on your computer. No subscription. No account. No audio ever uploaded.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0a84ff)
@@ -17,6 +17,21 @@ No subscription. No account. No audio ever uploaded.
 **[⬇ Download for Windows](../../releases/latest)** · **[Website](https://echo-quill.com)** · **[Report an issue](../../issues)**
 
 *If EchoQuill saves you time, a ⭐ star helps more people find it.*
+
+</div>
+
+## What EchoQuill does
+
+- **Dictation everywhere** — hold a hotkey and talk; text lands in any app. Voice commands & rewrite-by-voice too.
+- **Video / URL transcription** — YouTube (incl. Shorts), TikTok, Vimeo, Loom, Wistia and ~1,800 sites. **Skool support built in**: paste the lesson's video link or a signed `.m3u8` (auto-adds the Referer), or sign in via your browser for member-only videos.
+- **Keep the media** — optional "Keep audio file" / "Keep video file" so you save the download, not just the transcript. Name any transcript yourself.
+- **Meeting / Record** *(Pro)* — record what you HEAR on your PC (calls, webinars, any playing video), optionally your mic, and even **capture the full screen as MP4** — then transcribe & summarize it locally. No link, no DevTools.
+- **AI, your way** — cleanup, formatting & summaries via Ollama (100% local), Ollama Cloud, Claude, OpenAI, Groq, DeepSeek, Qwen or Z.AI. Off by default.
+- **Clips tray, editable history, favorites, search** — click a clip to paste at your cursor; edit & re-save any past transcription; ★ favorite the good ones.
+- **Organized output** — everything saves under `Documents/EchoQuill/` (Transcriptions, Meetings, …).
+- **Private & free** — 100% local unless you enable a cloud provider. Keys stored in Windows Credential Manager. Free forever for dictation.
+
+<div align="center">
 
 </div>
 
