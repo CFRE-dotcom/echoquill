@@ -57,6 +57,7 @@ class App:
             on_media=lambda: self.events.put("media"),
             on_command=lambda: self.events.put("toggle_command"),
             on_help=lambda: self.events.put("help"),
+            on_meeting=lambda: self.events.put("meeting"),
             level_provider=lambda: (self.recorder.level if self.recorder else 0.0),
         )
 
@@ -164,6 +165,7 @@ class App:
                     lambda: self.events.put("toggle"), default=True),
                 pystray.MenuItem("Voice command", lambda: self.events.put("toggle_command")),
                 pystray.MenuItem("Settings…", lambda: self.events.put("settings")),
+                pystray.MenuItem("Meeting / Record", lambda: self.events.put("meeting")),
                 pystray.MenuItem("Today's stats", lambda: self.events.put("stats")),
                 pystray.MenuItem("Help", lambda: self.events.put("help")),
                 pystray.MenuItem("Quit", lambda: self.events.put("quit")),
@@ -205,6 +207,8 @@ class App:
                     self._open_settings(section="Stats")
                 elif ev == "help":
                     self._open_settings(section="Help")
+                elif ev == "meeting":
+                    self._open_settings(section="Meeting")
                 elif ev == "open_update":
                     self._update_badge.hide()
                     self._open_settings(section="About")

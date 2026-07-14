@@ -810,6 +810,22 @@ class SettingsWindow:
                     "playing video - including Skool) and transcribe it "
                     "locally. No link, no URL, no DevTools.")
 
+        _pro = True
+        try:
+            from . import license as _lic
+            _pro = _lic.is_pro(self.cfg)
+        except Exception:
+            _pro = False
+        if not _pro:
+            ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+                "Meeting / Record is a Pro feature. Record calls, webinars and "
+                "any playing video — audio only, or the full screen as video — "
+                "then transcribe and summarize it, all locally on your PC.")
+                ).pack(anchor="w", pady=(0, 12))
+            ttk.Button(f, text="\u2b50 Upgrade to Pro", style="Accent.TButton",
+                       command=self._meeting_upgrade).pack(anchor="w")
+            return
+
         if not meeting.available():
             ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
                 "System-audio capture isn't available in this build. "
@@ -851,6 +867,16 @@ class SettingsWindow:
         self._mt_rec = None
 
     # ---------- meeting handlers ----------
+    def _meeting_upgrade(self):
+        if "License" in self.SECTIONS:
+            self._show("License")
+            return
+        try:
+            self._open_upgrade()
+        except Exception:
+            import webbrowser
+            webbrowser.open("https://echo-quill.com")
+
     def _meeting_set(self, msg):
         try:
             self.win.after(0, lambda: self._mt_status.configure(text=msg))

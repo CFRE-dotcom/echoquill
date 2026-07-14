@@ -5,7 +5,7 @@
 ; building dist\EchoQuill.exe with build_exe.bat.
 
 #define AppName "EchoQuill"
-#define AppVersion "1.17.2"
+#define AppVersion "1.17.3"
 #define AppExe "EchoQuill.exe"
 
 [Setup]
@@ -19,6 +19,7 @@ UninstallDisplayIcon={app}\{#AppExe}
 OutputBaseFilename=EchoQuill-Setup
 Compression=lzma2
 SolidCompression=yes
+PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 ; upgrades install over the old version silently - no manual uninstall
 CloseApplications=force
