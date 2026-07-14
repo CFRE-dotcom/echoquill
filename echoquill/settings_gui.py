@@ -368,48 +368,6 @@ class SettingsWindow:
         ttk.Button(crow2, text="Clear", command=_clear_cookies).pack(side="left", padx=6)
         self.cookie_status.pack(side="left", padx=8)
 
-        erow = ttk.Frame(f); erow.pack(anchor="w", pady=(14, 0))
-        ttk.Label(erow, text="Video engine (yt-dlp):").pack(side="left")
-        ttk.Button(erow, text="Update engine now",
-                   command=lambda: _upd_engine()).pack(side="left", padx=8)
-        self._restart_btn = ttk.Button(
-            erow, text="\u21bb Restart now", style="Accent.TButton",
-            command=lambda: (self.on_restart() if self.on_restart else None))
-        self.engine_status = ttk.Label(erow, text="", style="Dim.TLabel")
-        self.engine_status.pack(side="left")
-
-        def _upd_engine():
-            import threading
-
-            def run():
-                import sys as _sys
-                from . import ytdlp_updater as _yu
-                self.win.after(0, lambda: self.engine_status.configure(text="Updating\u2026"))
-                ver = _yu.update_now(lambda s: None)
-                loaded = "yt_dlp" in _sys.modules
-
-                def done():
-                    if not ver:
-                        self.engine_status.configure(text="update failed (check connection)")
-                        return
-                    if loaded:
-                        self.engine_status.configure(text=f"updated to {ver}")
-                        self._restart_btn.pack(side="left", padx=6)
-                    else:
-                        self.engine_status.configure(text=f"updated to {ver} \u2014 active now")
-                self.win.after(0, done)
-            threading.Thread(target=run, daemon=True).start()
-        try:
-            from . import ytdlp_updater as _yu
-            _v = _yu.installed_version()
-            self.engine_status.configure(text=(f"current: {_v}" if _v
-                                               else "using bundled (updates on launch)"))
-        except Exception:
-            pass
-        ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
-            "EchoQuill auto-updates the engine on launch so YouTube changes "
-            "don't break downloads. Hit \"Update engine now\" to grab the very "
-            "latest immediately.")).pack(anchor="w", pady=(4, 0))
 
     def _build_clipboard(self, f):
         self._title(f, "Clipboard",
