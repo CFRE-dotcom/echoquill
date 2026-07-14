@@ -927,8 +927,15 @@ class SettingsWindow:
                 self._meeting_set(f"Recording error: {e}")
                 self.win.after(0, lambda: self._mt_start.configure(state="normal"))
                 return
-            if audio is None or len(audio) < 8000:
-                self._meeting_set("Nothing captured. Is audio actually playing?")
+            import numpy as _np
+            if audio is None or len(audio) < 1600:
+                self._meeting_set("Nothing captured — no system audio came "
+                                  "through. Is something actually playing?")
+                self.win.after(0, lambda: self._mt_start.configure(state="normal"))
+                return
+            if float(_np.max(_np.abs(audio))) < 0.002:
+                self._meeting_set("Captured only silence — your playback device "
+                                  "may be muted or one we can't tap.")
                 self.win.after(0, lambda: self._mt_start.configure(state="normal"))
                 return
             self._meeting_set("Transcribing\u2026 (runs locally)")

@@ -59,39 +59,71 @@ class MeetingRecorder:
         import ctypes
         _co = False
         try:
-            # WASAPI/soundcard uses COM; a background thread must init it,
-            # otherwise you get 0x800401F0 (CO_E_NOTINITIALIZED).
-            ctypes.windll.ole32.CoInitialize(None)
+            # WASAPI capture threads want COM in the MULTITHREADED apartment,
+            # otherwise record() can return no samples (or 0x800401F0).
+            ctypes.windll.ole32.CoInitializeEx(None, 0)  # 0 = COINIT_MULTITHREADED
             _co = True
         except Exception:
-            pass
+            try:
+                ctypes.windll.ole32.CoInitialize(None)
+                _co = True
+            except Exception:
+                pass
         try:
             import soundcard as sc
+
+            # find a loopback capture of the current default output device
             spk = sc.default_speaker()
-            loopback = sc.get_microphone(id=str(spk.name), include_loopback=True)
-            block = 4000
+            loop_src = None
+            try:
+                loop_src = sc.get_microphone(id=str(spk.name), include_loopback=True)
+            except Exception:
+                loop_src = None
+            if loop_src is None:
+                loops = [m for m in sc.all_microphones(include_loopback=True)
+                         if getattr(m, "isloopback", False)]
+                # prefer one whose name matches the default speaker
+                match = [m for m in loops if spk.name.lower() in m.name.lower()]
+                loop_src = (match or loops or [None])[0]
+            if loop_src is None:
+                self._error = "No system-audio (loopback) device found."
+                self._running = False
+                return
+
+            block = 2400
             mic = sc.default_microphone() if self.include_mic else None
-            with loopback.recorder(samplerate=SR, channels=1) as lrec:
+            with loop_src.recorder(samplerate=SR, channels=1) as lrec:
                 mrec = None
                 mctx = None
                 if mic is not None:
-                    mctx = mic.recorder(samplerate=SR, channels=1)
-                    mrec = mctx.__enter__()
+                    try:
+                        mctx = mic.recorder(samplerate=SR, channels=1)
+                        mrec = mctx.__enter__()
+                    except Exception:
+                        mrec = None
+                        mctx = None
                 try:
                     while self._running:
                         sysd = lrec.record(numframes=block)
                         sysm = sysd.mean(axis=1) if sysd.ndim > 1 else sysd
                         if mrec is not None:
-                            micd = mrec.record(numframes=block)
-                            micm = micd.mean(axis=1) if micd.ndim > 1 else micd
-                            n = min(len(sysm), len(micm))
-                            mixed = np.clip(sysm[:n] + micm[:n], -1.0, 1.0)
+                            try:
+                                micd = mrec.record(numframes=block)
+                                micm = micd.mean(axis=1) if micd.ndim > 1 else micd
+                                n = min(len(sysm), len(micm))
+                                mixed = np.clip(sysm[:n] + micm[:n], -1.0, 1.0)
+                            except Exception:
+                                mixed = sysm
                         else:
                             mixed = sysm
-                        self._frames.append(np.asarray(mixed, dtype=np.float32))
+                        if len(mixed):
+                            self._frames.append(np.asarray(mixed, dtype=np.float32))
                 finally:
                     if mctx is not None:
-                        mctx.__exit__(None, None, None)
+                        try:
+                            mctx.__exit__(None, None, None)
+                        except Exception:
+                            pass
         except Exception as e:  # surfaced by stop()
             self._error = str(e)
             self._running = False
@@ -101,7 +133,6 @@ class MeetingRecorder:
                     ctypes.windll.ole32.CoUninitialize()
                 except Exception:
                     pass
-
 
 def save_wav(audio: "np.ndarray", path: str):
     """Write a mono float32 array to a 16-bit PCM WAV."""
