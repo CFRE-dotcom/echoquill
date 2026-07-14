@@ -251,17 +251,14 @@ class MediaWindow:
                          "(off by default).")
         helptip.tip(_kv, "Also download and save the full video file "
                          "(off by default).")
-
-        # search inside the transcript
-        row3 = ttk.Frame(self.win)
-        row3.pack(fill="x", padx=18, pady=(6, 0))
-        ttk.Label(row3, text="Find in transcript:").pack(side="left")
+        # Find-in-transcript shares this row, filling the empty space on the right
+        self.search_count = ttk.Label(keeprow, text="", style="Dim.TLabel")
+        self.search_count.pack(side="right", padx=(6, 0))
         self.search_var = tk.StringVar()
-        se = ttk.Entry(row3, textvariable=self.search_var, width=28)
-        se.pack(side="left", padx=6)
+        se = ttk.Entry(keeprow, textvariable=self.search_var, width=28)
+        se.pack(side="right", padx=6)
         se.bind("<KeyRelease>", lambda e: self._search())
-        self.search_count = ttk.Label(row3, text="", style="Dim.TLabel")
-        self.search_count.pack(side="left", padx=6)
+        ttk.Label(keeprow, text="Find in transcript:").pack(side="right")
 
         self.out = theme.dark_text(self.win, wrap="word")
         self.out.pack(fill="both", expand=True, padx=18, pady=(8, 4))
