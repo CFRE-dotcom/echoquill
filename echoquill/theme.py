@@ -112,24 +112,37 @@ class Scrollable(ttk.Frame):
 
 
 def _install_context_menus(win):
-    """Right-click Cut/Copy/Paste on every entry and text box in this window."""
+    """Right-click Cut/Copy/Paste on every entry and text box, app-wide."""
     def popup(event):
         w = event.widget
-        m = tk.Menu(win, tearoff=0, bg=FIELD, fg=FG,
-                    activebackground=ACCENT, activeforeground="#ffffff", bd=0)
-        m.add_command(label="Cut", command=lambda: w.event_generate("<<Cut>>"))
-        m.add_command(label="Copy", command=lambda: w.event_generate("<<Copy>>"))
-        m.add_command(label="Paste", command=lambda: w.event_generate("<<Paste>>"))
-        m.add_separator()
-        m.add_command(label="Select all",
-                      command=lambda: w.event_generate("<<SelectAll>>"))
-        m.tk_popup(event.x_root, event.y_root)
-        return "break"
-    for cls in ("Entry", "TEntry", "Text", "TCombobox", "TSpinbox"):
         try:
-            win.bind_class(cls, "<Button-3>", popup)
+            w.focus_set()                 # so Paste targets THIS field
         except Exception:
             pass
+
+        def do(seq):
+            try:
+                w.event_generate(seq)
+            except Exception:
+                pass
+        m = tk.Menu(win, tearoff=0, bg=FIELD, fg=FG,
+                    activebackground=ACCENT, activeforeground="#ffffff", bd=0)
+        m.add_command(label="Cut", command=lambda: do("<<Cut>>"))
+        m.add_command(label="Copy", command=lambda: do("<<Copy>>"))
+        m.add_command(label="Paste", command=lambda: do("<<Paste>>"))
+        m.add_separator()
+        m.add_command(label="Select all", command=lambda: do("<<SelectAll>>"))
+        try:
+            m.tk_popup(event.x_root, event.y_root)
+        finally:
+            m.grab_release()              # <-- the fix: menu stays open on Windows
+        return "break"
+    for cls in ("Entry", "TEntry", "Text", "TCombobox", "TSpinbox"):
+        for btn in ("<Button-3>", "<Button-2>"):
+            try:
+                win.bind_class(cls, btn, popup)
+            except Exception:
+                pass
 
 
 def dark_listbox(parent, **kw) -> tk.Listbox:
