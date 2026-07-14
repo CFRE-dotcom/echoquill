@@ -139,11 +139,17 @@ def _media_opts(url, cfg, tmpl, fmt):
     return opts
 
 
-def download_video(url, cfg, dest_dir, status_cb=lambda s: None) -> str:
-    """Download the FULL video (not just audio) into dest_dir. Returns title."""
+def download_video(url, cfg, dest_dir, status_cb=lambda s: None, name=None) -> str:
+    """Download the FULL video (not just audio) into dest_dir. Returns title.
+
+    If name is given, the file is saved under that name (used for Skool videos
+    and the optional 'Name this transcript' box)."""
     import yt_dlp
     status_cb("Downloading video…")
-    tmpl = os.path.join(dest_dir, "%(title).120B.%(ext)s")
+    if name:
+        tmpl = os.path.join(dest_dir, _safe_stem(name) + ".%(ext)s")
+    else:
+        tmpl = os.path.join(dest_dir, "%(title).120B.%(ext)s")
     opts = _media_opts(url, cfg, tmpl, "bv*+ba/b")
     opts["merge_output_format"] = "mp4"
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -221,6 +227,16 @@ class MediaWindow:
         self.status = ttk.Label(row2, text="", style="Dim.TLabel")
         self.status.pack(side="left", padx=12)
 
+        namerow = ttk.Frame(self.win)
+        namerow.pack(fill="x", padx=18, pady=(6, 0))
+        ttk.Label(namerow, text="Name this transcript (optional):").pack(side="left")
+        self.name_var = tk.StringVar()
+        _nm = ttk.Entry(namerow, textvariable=self.name_var)
+        _nm.pack(side="left", fill="x", expand=True, padx=(8, 0), ipady=2)
+        helptip.tip(_nm, "Type a name and the transcript (plus any kept "
+                         "audio/video) saves under it - no re-saving. Leave "
+                         "blank to use the video's own title. Handy for Skool "
+                         "videos, which have no title.")
         keeprow = ttk.Frame(self.win)
         keeprow.pack(fill="x", padx=18, pady=(4, 0))
         self.keep_audio_var = tk.BooleanVar(value=False)
@@ -303,6 +319,10 @@ class MediaWindow:
             else:
                 path = source
                 title = os.path.splitext(os.path.basename(source))[0]
+            custom = (self.name_var.get().strip()
+                      if hasattr(self, "name_var") else "")
+            if custom:
+                title = custom
             header = f"{title}\n{source}\n\n"
             self._append(header)
             self._set_status("Transcribing… (long videos take a while)")
@@ -342,7 +362,7 @@ class MediaWindow:
                         _sh.copy2(path, adst)
                         self._set_status(f"Saved audio: {os.path.basename(adst)}")
                     if self.keep_video_var.get():
-                        download_video(source, self.cfg, folder, self._set_status)
+                        download_video(source, self.cfg, folder, self._set_status, name=title)
                         self._set_status("Saved video \u2713")
                 except Exception as _ke:
                     self._set_status(f"(Keep-file note: {_ke})")
