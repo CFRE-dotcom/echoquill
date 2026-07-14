@@ -221,4 +221,13 @@ class ScreenRecorder:
                 os.replace(self._screen_tmp, self.dest)
         except Exception as e:
             self.error = f"mux: {e}"
+        finally:
+            # tidy temp files so they don't accumulate
+            for tmp in (self._screen_tmp,
+                        os.path.join(__import__("tempfile").gettempdir(), "eq_audio.wav")):
+                try:
+                    if tmp and os.path.exists(tmp) and tmp != self.dest:
+                        os.remove(tmp)
+                except Exception:
+                    pass
         return audio

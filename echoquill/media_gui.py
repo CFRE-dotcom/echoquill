@@ -184,6 +184,10 @@ def meetings_dir(cfg) -> str:
     return _subfolder(cfg, "Meetings")
 
 
+def clips_dir(cfg) -> str:
+    return _subfolder(cfg, "Clips")
+
+
 class MediaWindow:
     def __init__(self, root: tk.Tk, transcriber, cfg: dict):
         self.transcriber = transcriber

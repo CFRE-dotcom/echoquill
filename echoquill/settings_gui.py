@@ -803,8 +803,7 @@ class SettingsWindow:
         threading.Thread(target=run, daemon=True).start()
 
     def _build_meeting(self, f):
-        import threading
-        from . import meeting
+        from . import meeting, helptip
         self._title(f, "Meeting / Record",
                     "Record what you HEAR on this PC (calls, webinars, any "
                     "playing video - including Skool) and transcribe it "
@@ -819,8 +818,8 @@ class SettingsWindow:
         if not _pro:
             ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
                 "Meeting / Record is a Pro feature. Record calls, webinars and "
-                "any playing video — audio only, or the full screen as video — "
-                "then transcribe and summarize it, all locally on your PC.")
+                "any playing video \u2014 audio only, or the full screen as "
+                "video \u2014 then transcribe and summarize it, all locally.")
                 ).pack(anchor="w", pady=(0, 12))
             ttk.Button(f, text="\u2b50 Upgrade to Pro", style="Accent.TButton",
                        command=self._meeting_upgrade).pack(anchor="w")
@@ -833,40 +832,60 @@ class SettingsWindow:
             return
 
         self._mt_mic = tk.BooleanVar(value=False)
-        ttk.Checkbutton(f, text="Also record my microphone (for two-way calls)",
-                        variable=self._mt_mic).pack(anchor="w", pady=(0, 6))
+        _cm = ttk.Checkbutton(f, text="Also record my microphone (for two-way calls)",
+                              variable=self._mt_mic)
+        _cm.pack(anchor="w", pady=(0, 4))
+        helptip.tip(_cm, "Mix in your microphone so both sides of a call are captured.")
         self._mt_video = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
+        _cs = ttk.Checkbutton(
             f, text="Also capture the screen (save an MP4 video + transcribe)",
-            variable=self._mt_video).pack(anchor="w", pady=(0, 6))
+            variable=self._mt_video)
+        _cs.pack(anchor="w", pady=(0, 6))
+        helptip.tip(_cs, "Also record the whole screen to an MP4 next to the transcript.")
 
         nrow = ttk.Frame(f); nrow.pack(fill="x", pady=(0, 6))
-        ttk.Label(nrow, text="Name (optional):").pack(side="left")
+        ttk.Label(nrow, text="Name (required):").pack(side="left")
         self._mt_name = tk.StringVar()
-        ttk.Entry(nrow, textvariable=self._mt_name).pack(
-            side="left", fill="x", expand=True, padx=(8, 0), ipady=2)
+        _ne = ttk.Entry(nrow, textvariable=self._mt_name)
+        _ne.pack(side="left", fill="x", expand=True, padx=(8, 0), ipady=2)
+        helptip.tip(_ne, "Everything saves under this name in your Meetings folder. "
+                         "Required before you can start.")
+        self._mt_nameentry = _ne
 
-        brow = ttk.Frame(f); brow.pack(anchor="w", pady=(2, 6))
-        self._mt_start = ttk.Button(brow, text="\u25cf  Start recording",
+        crow = ttk.Frame(f); crow.pack(anchor="w", pady=(2, 6))
+        self._mt_start = ttk.Button(crow, text="\u25cf  Start recording",
                                     style="Accent.TButton", command=self._meeting_start)
         self._mt_start.pack(side="left")
-        self._mt_stop = ttk.Button(brow, text="\u25a0  Stop & transcribe",
+        helptip.tip(self._mt_start, "Start capturing system audio (plus mic/screen if ticked).")
+        self._mt_stop = ttk.Button(crow, text="\u25a0  Stop & transcribe",
                                    command=self._meeting_stop, state="disabled")
         self._mt_stop.pack(side="left", padx=8)
-        self._mt_status = ttk.Label(brow, text="", style="Dim.TLabel")
+        helptip.tip(self._mt_stop, "Stop and transcribe locally.")
+        self._mt_status = ttk.Label(crow, text="", style="Dim.TLabel")
         self._mt_status.pack(side="left", padx=10)
 
-        self._mt_out = theme.dark_text(f, wrap="word")
-        self._mt_out.pack(fill="both", expand=True, pady=(4, 6))
+        arow = ttk.Frame(f); arow.pack(anchor="w", pady=(0, 6))
+        _b1 = ttk.Button(arow, text="Summarize with AI", command=self._meeting_summarize)
+        _b1.pack(side="left")
+        helptip.tip(_b1, "Turn the transcript into key points + action items with AI.")
+        _b2 = ttk.Button(arow, text="Copy transcript", command=self._meeting_copy)
+        _b2.pack(side="left", padx=6)
+        helptip.tip(_b2, "Copy the transcript to the clipboard.")
+        _b3 = ttk.Button(arow, text="Save as .txt\u2026", command=self._meeting_save)
+        _b3.pack(side="left", padx=6)
+        helptip.tip(_b3, "Save the transcript (opens straight in your Meetings folder).")
+        _b4 = ttk.Button(arow, text="Open Meetings folder",
+                         command=self._meeting_open_folder)
+        _b4.pack(side="left", padx=6)
+        helptip.tip(_b4, "Open the folder where recordings and transcripts are saved.")
+        _b5 = ttk.Button(arow, text="Clear", command=self._meeting_clear)
+        _b5.pack(side="left", padx=6)
+        helptip.tip(_b5, "Clear the text area.")
 
-        drow = ttk.Frame(f); drow.pack(anchor="w")
-        ttk.Button(drow, text="Summarize with AI",
-                   command=self._meeting_summarize).pack(side="left")
-        ttk.Button(drow, text="Save as .txt\u2026",
-                   command=self._meeting_save).pack(side="left", padx=8)
+        self._mt_out = theme.dark_text(f, wrap="word", height=12)
+        self._mt_out.pack(fill="both", expand=True, pady=(2, 6))
         self._mt_rec = None
 
-    # ---------- meeting handlers ----------
     def _meeting_upgrade(self):
         if "License" in self.SECTIONS:
             self._show("License")
@@ -883,17 +902,46 @@ class SettingsWindow:
         except Exception:
             pass
 
+    def _meeting_copy(self):
+        t = self._mt_out.get("1.0", "end").strip()
+        if not t:
+            self._meeting_set("Nothing to copy yet."); return
+        try:
+            import pyperclip
+            pyperclip.copy(t)
+            self._meeting_set("Copied \u2713")
+        except Exception:
+            self._meeting_set("Copy failed")
+
+    def _meeting_clear(self):
+        self._mt_out.delete("1.0", "end")
+        self._meeting_set("")
+
+    def _meeting_open_folder(self):
+        import os
+        from .media_gui import meetings_dir
+        try:
+            os.startfile(meetings_dir(self.cfg))
+        except Exception as e:
+            self._meeting_set(str(e))
+
     def _meeting_start(self):
         from . import meeting
+        if not self._mt_name.get().strip():
+            self._meeting_set("Please enter a name first \u2014 it's required.")
+            try:
+                self._mt_nameentry.focus_set()
+            except Exception:
+                pass
+            return
         self._mt_video_path = None
         if getattr(self, "_mt_video", None) is not None and self._mt_video.get():
             if not hasattr(meeting, "ScreenRecorder"):
                 self._meeting_set("Screen capture needs the latest build.")
                 return
-            import os, datetime
+            import os
             from .media_gui import meetings_dir, safe_filename
-            nm = (self._mt_name.get().strip() or
-                  datetime.datetime.now().strftime("Recording %Y-%m-%d %H%M"))
+            nm = self._mt_name.get().strip()
             self._mt_video_path = os.path.join(
                 meetings_dir(self.cfg), safe_filename(nm)[:-4] + ".mp4")
             self._mt_rec = meeting.ScreenRecorder(
@@ -929,13 +977,13 @@ class SettingsWindow:
                 return
             import numpy as _np
             if audio is None or len(audio) < 1600:
-                self._meeting_set("Nothing captured — no system audio came "
+                self._meeting_set("Nothing captured \u2014 no system audio came "
                                   "through. Is something actually playing?")
                 self.win.after(0, lambda: self._mt_start.configure(state="normal"))
                 return
             if float(_np.max(_np.abs(audio))) < 0.002:
-                self._meeting_set("Captured only silence — your playback device "
-                                  "may be muted or one we can't tap.")
+                self._meeting_set("Captured only silence \u2014 your playback "
+                                  "device may be muted or one we can't tap.")
                 self.win.after(0, lambda: self._mt_start.configure(state="normal"))
                 return
             self._meeting_set("Transcribing\u2026 (runs locally)")
@@ -944,10 +992,9 @@ class SettingsWindow:
                 if not hasattr(self, "_mt_engine"):
                     self._mt_engine = Transcriber(self.cfg.get("model", "base"))
                 model = self._mt_engine.load()
-                import numpy as np
                 lang = self.cfg.get("language", "auto")
                 lang = None if lang in ("", "auto") else lang
-                segs, _i = model.transcribe(np.asarray(audio, dtype="float32"),
+                segs, _i = model.transcribe(_np.asarray(audio, dtype="float32"),
                                             language=lang, vad_filter=True)
                 text = " ".join(s.text.strip() for s in segs).strip()
             except Exception as e:
@@ -960,17 +1007,15 @@ class SettingsWindow:
                 self._mt_out.insert("1.0", text)
                 self._mt_start.configure(state="normal")
                 if getattr(self, "_mt_video_path", None):
-                    self._meeting_set("Done \u2713 (MP4 video + transcript saved)")
+                    self._meeting_set("Done \u2713 (MP4 video + transcript saved to Meetings)")
                 else:
                     self._meeting_set("Done \u2713 (saved to your Meetings folder)")
             self.win.after(0, show)
-            # auto-save
             try:
-                from .media_gui import transcripts_dir, safe_filename
+                from .media_gui import meetings_dir, safe_filename
                 import os
-                name = (self._mt_name.get().strip() or
-                        __import__("datetime").datetime.now().strftime(
-                            "Meeting %Y-%m-%d %H%M"))
+                name = self._mt_name.get().strip() or __import__(
+                    "datetime").datetime.now().strftime("Meeting %Y-%m-%d %H%M")
                 folder = meetings_dir(self.cfg)
                 out = os.path.join(folder, safe_filename(name))
                 base, n = out, 2
@@ -1007,11 +1052,15 @@ class SettingsWindow:
 
     def _meeting_save(self):
         from tkinter import filedialog
+        from .media_gui import meetings_dir, safe_filename
         text = self._mt_out.get("1.0", "end").strip()
         if not text:
             self._meeting_set("Nothing to save yet."); return
-        p = filedialog.asksaveasfilename(parent=self.win, defaultextension=".txt",
-                                         filetypes=[("Text", "*.txt")])
+        nm = self._mt_name.get().strip() or "meeting"
+        p = filedialog.asksaveasfilename(
+            parent=self.win, defaultextension=".txt",
+            initialdir=meetings_dir(self.cfg), initialfile=safe_filename(nm),
+            filetypes=[("Text", "*.txt")])
         if p:
             with open(p, "w", encoding="utf-8") as fh:
                 fh.write(text)
