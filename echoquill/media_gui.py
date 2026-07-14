@@ -150,7 +150,7 @@ def download_video(url, cfg, dest_dir, status_cb=lambda s: None, name=None) -> s
         tmpl = os.path.join(dest_dir, _safe_stem(name) + ".%(ext)s")
     else:
         tmpl = os.path.join(dest_dir, "%(title).120B.%(ext)s")
-    opts = _media_opts(url, cfg, tmpl, "bv*+ba/b")
+    opts = _media_opts(url, cfg, tmpl, "best/bv*+ba/b")
     opts["merge_output_format"] = "mp4"
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -325,6 +325,30 @@ class MediaWindow:
                 title = custom
             header = f"{title}\n{source}\n\n"
             self._append(header)
+            # Keep audio/video BEFORE transcribing, while the signed link is
+            # still fresh (a long transcription can outlive a Skool token).
+            if is_url:
+                keep_folder = transcripts_dir(self.cfg)
+                if self.keep_video_var.get():
+                    try:
+                        self._set_status("Downloading video…")
+                        download_video(source, self.cfg, keep_folder,
+                                       self._set_status, name=title)
+                        self._append("[Saved the video file ✓]\n\n")
+                    except Exception as _ve:
+                        self._append(f"[Could not save video: {_ve}]\n\n")
+                if self.keep_audio_var.get() and path and os.path.exists(path):
+                    try:
+                        ext = os.path.splitext(path)[1] or ".m4a"
+                        adst = _unique_path(os.path.join(
+                            keep_folder, _safe_stem(title) + ext))
+                        import shutil as _sh
+                        _sh.copy2(path, adst)
+                        self._append(f"[Saved the audio file: "
+                                     f"{os.path.basename(adst)} ✓]\n\n")
+                    except Exception as _ae:
+                        self._append(f"[Could not save audio: {_ae}]\n\n")
+
             self._set_status("Transcribing… (long videos take a while)")
             eng = self._engine()
             model = eng.load()
@@ -352,20 +376,6 @@ class MediaWindow:
                 out = base[:-4] + f" ({n}).txt"; n += 1
             with open(out, "w", encoding="utf-8") as f:
                 f.write(header + " ".join(parts).strip())
-            # optional: keep the audio and/or full video (checkboxes, URL only)
-            if is_url and not getattr(self, "_cancel", False):
-                try:
-                    if self.keep_audio_var.get() and path and os.path.exists(path):
-                        ext = os.path.splitext(path)[1] or ".m4a"
-                        adst = _unique_path(os.path.join(folder, _safe_stem(title) + ext))
-                        import shutil as _sh
-                        _sh.copy2(path, adst)
-                        self._set_status(f"Saved audio: {os.path.basename(adst)}")
-                    if self.keep_video_var.get():
-                        download_video(source, self.cfg, folder, self._set_status, name=title)
-                        self._set_status("Saved video \u2713")
-                except Exception as _ke:
-                    self._set_status(f"(Keep-file note: {_ke})")
             _use_one(self.cfg)
             left = _allowance(self.cfg)
             self._set_status(f"Done ✓ — saved automatically: {os.path.basename(out)}"
