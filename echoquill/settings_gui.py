@@ -324,12 +324,12 @@ class SettingsWindow:
                   text="SIGN IN (YouTube bot-checks, Skool & member-only videos)"
                   ).pack(anchor="w", pady=(16, 4))
         ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
-            "YouTube trusts a logged-in session and stops the \"confirm you're "
-            "not a bot\" wall. Install the \"Get cookies.txt LOCALLY\" browser "
-            "extension, open youtube.com (logged in), click Export, and PASTE "
-            "the WHOLE file here, then Save. The top line that says "
-            "\"generated file, do not edit\" is normal - leave it in; it's just "
-            "the cookies.txt format, not something EchoQuill made.")).pack(anchor="w")
+            "Some sites need you signed in (YouTube's bot check, Skool, private "
+            "Vimeo). Install the \"Get cookies.txt LOCALLY\" extension and use "
+            "its \"Export All Cookies\" - one file then covers EVERY site you're "
+            "logged into (YouTube AND Skool AND the rest). Paste that whole file "
+            "here, then Save. The top \"generated file, do not edit\" line is "
+            "normal - leave it in; it's just the cookies.txt format.")).pack(anchor="w")
         self.cookie_box = theme.dark_text(f, wrap="none", height=6)
         self.cookie_box.pack(fill="x", pady=(4, 4))
         try:
