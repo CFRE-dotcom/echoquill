@@ -55,6 +55,22 @@ LIMIT_MSG = ("Free limit reached (5 video transcriptions). Upgrade to Pro for "
              "unlimited — only $5/month or $39/year. Dictation stays free forever.")
 
 
+def friendly_dl_error(e) -> str:
+    """Turn common yt-dlp errors into plain-language guidance."""
+    msg = str(e)
+    low = msg.lower()
+    if "not a bot" in low or "sign in to confirm" in low or \
+       ("cookies" in low and "youtube" in low):
+        return ("YouTube asked to verify you're not a bot. Turn on Settings > "
+                "Transcription > \"Sign in via browser\" and pick the browser "
+                "you're logged into YouTube with, then try again.")
+    if "403" in low or "forbidden" in low:
+        return ("Access denied - the signed link may have expired or needs your "
+                "login. Grab a fresh link, and/or turn on Settings > "
+                "Transcription > Sign in via browser.")
+    return f"Error: {msg}"
+
+
 def open_upgrade(cfg):
     import webbrowser
     webbrowser.open(cfg.get("upgrade_url",
@@ -402,7 +418,7 @@ class MediaWindow:
             self._set_status(f"Done ✓ — saved automatically: {os.path.basename(out)}"
                              f"  ({left} free transcription{'s' if left != 1 else ''} left)")
         except Exception as e:
-            self._set_status(f"Error: {e}")
+            self._set_status(friendly_dl_error(e))
         finally:
             _keep_awake(False)
             self.win.after(0, lambda: self.stop_btn.configure(state="disabled"))
@@ -612,7 +628,7 @@ class BatchWindow:
                 preview = text if len(text) <= 600 else text[:600] + " […full text saved to file]"
                 self._log("    " + preview + "\n")
             except Exception as e:
-                self._log(f"[{i}/{len(urls)}] FAILED: {e}")
+                self._log(f"[{i}/{len(urls)}] FAILED: " + friendly_dl_error(e))
         _keep_awake(False)
         if not getattr(self, "_bcancel", False):
             self._log(f"Batch finished — {done}/{len(urls)} saved to {self.folder}")
