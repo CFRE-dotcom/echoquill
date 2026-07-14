@@ -28,6 +28,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
+      - name: Verify UI wiring (no undefined button handlers)
+        run: python scripts/check_wiring.py
+
       - name: Generate icon
         run: python scripts/gen_icon.py
 
