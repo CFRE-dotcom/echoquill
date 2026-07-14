@@ -66,6 +66,11 @@ class ClipboardWindow:
             srow, "Search your transcriptions…", self.refresh)
         wrap.pack(fill="x")
 
+        # ---- folder bar (both tabs) ----
+        self._hist_folder = "All"
+        self._folder_row = tk.Frame(self.win, bg=theme.BG)
+        self._folder_row.pack(fill="x", padx=16, pady=(6, 0))
+
         # ---- paging row (Pro, Recent tab only) ----
         self._page_row = tk.Frame(self.win, bg=theme.BG)
         self._page_row.pack(fill="x", padx=16, pady=(6, 0))
@@ -109,14 +114,46 @@ class ClipboardWindow:
         for w in self.body.winfo_children():
             w.destroy()
         term = self._search_value().lower()
+        from . import folders
+        for w in self._folder_row.winfo_children():
+            w.destroy()
+        opts = ["All"] + folders.all_folders()
+        if self._hist_folder not in opts:
+            self._hist_folder = "All"
+        tk.Label(self._folder_row, text="Folder:", bg=theme.BG, fg=theme.DIM,
+                 font=("Segoe UI", 9)).pack(side="left")
+        fv = tk.StringVar(value=self._hist_folder)
+        ttk.OptionMenu(self._folder_row, fv, self._hist_folder, *opts,
+                       command=self._set_hist_folder).pack(side="left", padx=6)
+        _nf = tk.Label(self._folder_row, text="＋ New folder", bg=theme.BG,
+                       fg=theme.ACCENT, font=("Segoe UI Semibold", 9),
+                       cursor="hand2")
+        _nf.pack(side="left", padx=6)
+        _nf.bind("<Button-1>", lambda e: self._new_folder())
+        _nf.bind("<Enter>", lambda e, w=_nf: w.configure(fg=theme.FG))
+        _nf.bind("<Leave>", lambda e, w=_nf: w.configure(fg=theme.ACCENT))
+        helptip.tip(_nf, "Create a new folder, then move transcriptions into it.")
 
+        folder = self._hist_folder if self._hist_folder != "All" else None
         if self._tab == "favs":
             self._page_row.pack_forget()
             self._delall_btn.configure(text="Clear favorites")
             data = favorites.all_favorites()
             if term:
                 data = [e for e in data if term in e.get("text", "").lower()]
+            if folder:
+                data = [e for e in data
+                        if folders.folder_of(e.get("text", "")) == folder]
             page = data
+        elif folder:
+            # Folder filter: bypass paging, scan the full recent set client-side.
+            self._page_row.pack_forget()
+            self._delall_btn.configure(text="Delete all")
+            data = self._recent_all()
+            if term:
+                data = [e for e in data if term in e.get("text", "").lower()]
+            page = [e for e in data
+                    if folders.folder_of(e.get("text", "")) == folder]
         else:
             if self._pro:
                 self._page_row.pack(fill="x", padx=16, pady=(6, 0),
@@ -167,6 +204,20 @@ class ClipboardWindow:
         st.bind("<Button-1>", lambda ev, t=text: self._star(t))
         helptip.tip(st, "Favorite / unfavorite (click again to remove)")
 
+        from . import folders
+        fname = folders.folder_of(text)
+        if fname:
+            tag = fname if len(fname) <= 16 else fname[:15] + "…"
+            tk.Label(row, text="🗂 " + tag, bg=theme.FIELD, fg=theme.DIM,
+                     font=("Segoe UI", 8)).pack(side="right", padx=(0, 2))
+        fo = tk.Label(row, text="🗂", bg=theme.FIELD, fg=theme.DIM,
+                      font=("Segoe UI", 11), padx=5, cursor="hand2")
+        fo.pack(side="right")
+        fo.bind("<Button-1>", lambda ev, t=text: self._assign_folder(t))
+        fo.bind("<Enter>", lambda ev, w=fo: w.configure(fg=theme.ACCENT))
+        fo.bind("<Leave>", lambda ev, w=fo: w.configure(fg=theme.DIM))
+        helptip.tip(fo, "Move to a folder")
+
         ed = tk.Label(row, text="✎", bg=theme.FIELD, fg=theme.DIM,
                       font=("Segoe UI", 11), padx=5, cursor="hand2")
         ed.pack(side="right")
@@ -200,6 +251,32 @@ class ClipboardWindow:
 
     def _flip(self, d):
         self._page += d
+        self.refresh()
+
+    def _set_hist_folder(self, v):
+        self._hist_folder = v
+        self._page = 0
+        self.refresh()
+
+    def _new_folder(self):
+        from . import folder_dialog, folders
+        name = folder_dialog.new_folder(self.win)
+        if not name:
+            return
+        folders.create(name)
+        self._hist_folder = name
+        self._flash(f"Folder '{name}' created")
+        self.refresh()
+
+    def _assign_folder(self, text):
+        from . import folder_dialog, folders
+        cur = folders.folder_of(text)
+        name = folder_dialog.move_to_folder(
+            self.win, current=cur, names=folders.all_folders())
+        if name is None:
+            return
+        folders.assign(text, name)
+        self._flash(f"Moved to '{name}'" if name else "Removed from folder")
         self.refresh()
 
     def _flash(self, msg):

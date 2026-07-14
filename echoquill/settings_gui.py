@@ -899,31 +899,37 @@ class SettingsWindow:
         self._mt_status.pack(side="left", padx=10)
 
         from . import prompts as _pr
-        qrow = ttk.Frame(f); qrow.pack(fill="x", pady=(0, 4))
-        ttk.Label(qrow, text="Ask AI:").pack(side="left")
-        self._mt_q = tk.StringVar()
+        ttk.Label(f, text="Ask AI:").pack(anchor="w")
+        prow = ttk.Frame(f); prow.pack(fill="x", pady=(2, 0))
+        ttk.Label(prow, text="Presets:").pack(side="left")
         self._mt_preset = tk.StringVar(value="Presets \u25be")
         self._mt_presetmenu = ttk.OptionMenu(
-            qrow, self._mt_preset, "Presets \u25be", *_pr.menu_items(self.cfg),
+            prow, self._mt_preset, "Presets \u25be", *_pr.menu_items(self.cfg),
             command=self._mt_preset_pick)
-        self._mt_presetmenu.pack(side="left", padx=(6, 6))
+        self._mt_presetmenu.configure(width=18)
+        self._mt_presetmenu.pack(side="left", padx=(6, 0))
         helptip.tip(self._mt_presetmenu, "Pick a ready-made question, or the "
                     "bottom item to add / edit your own.")
-        _qe = ttk.Entry(qrow, textvariable=self._mt_q)
-        _qe.pack(side="left", fill="x", expand=True, ipady=2)
-        _qe.bind("<Return>", lambda e: self._meeting_ask())
-        _ab = ttk.Button(qrow, text="Ask", style="Accent.TButton", command=self._meeting_ask)
-        _ab.pack(side="left", padx=(6, 0))
+        qrow = ttk.Frame(f); qrow.pack(fill="x", pady=(4, 4))
+        _ab = ttk.Button(qrow, text="Ask", style="Accent.TButton",
+                         command=self._meeting_ask)
+        _ab.pack(side="right", padx=(8, 0))
         helptip.tip(_ab, "Ask anything about this recording - pick a preset or type your own question.")
+        self._mt_qbox = tk.Text(qrow, height=2, wrap="word", bg=theme.FIELD,
+                                fg=theme.FG, insertbackground=theme.FG,
+                                borderwidth=1, relief="solid",
+                                font=("Segoe UI", 10), padx=6, pady=4)
+        self._mt_qbox.pack(side="left", fill="x", expand=True)
+        self._mt_qbox.bind("<Return>", lambda e: (self._meeting_ask(), "break")[1])
 
         arow = ttk.Frame(f); arow.pack(anchor="w", pady=(0, 6))
-        _b2 = ttk.Button(arow, text="Copy transcript", command=self._meeting_copy)
+        _b2 = ttk.Button(arow, text="Copy", command=self._meeting_copy)
         _b2.pack(side="left", padx=6)
         helptip.tip(_b2, "Copy the transcript to the clipboard.")
         _b3 = ttk.Button(arow, text="Save as .txt\u2026", command=self._meeting_save)
         _b3.pack(side="left", padx=6)
         helptip.tip(_b3, "Save the transcript (opens straight in your Meetings folder).")
-        _b4 = ttk.Button(arow, text="Open Meetings folder",
+        _b4 = ttk.Button(arow, text="Open folder",
                          command=self._meeting_open_folder)
         _b4.pack(side="left", padx=6)
         helptip.tip(_b4, "Open the folder where recordings and transcripts are saved.")
@@ -1081,7 +1087,7 @@ class SettingsWindow:
         text = self._mt_out.get("1.0", "end").strip()
         if not text:
             self._meeting_set("Transcribe something first."); return
-        q = self._mt_q.get().strip()
+        q = self._mt_qbox.get("1.0", "end").strip()
         if not q or q.startswith("Presets"):
             self._meeting_set("Pick a preset or type a question."); return
         self._meeting_set("Asking AI\u2026")
@@ -1100,27 +1106,14 @@ class SettingsWindow:
             self.win.after(0, show)
         threading.Thread(target=run, daemon=True).start()
 
-    def _preset_add_current(self):
-        from . import prompts as _pr
-        q = self._mt_q.get().strip()
-        if not q or q.startswith("Presets"):
-            self._meeting_set("Type a question first, then + to save it."); return
-        _pr.add_prompt(self.cfg, q); self._refresh_preset_menu()
-        self._meeting_set("Preset saved \u2713")
-
-    def _preset_remove_current(self):
-        from . import prompts as _pr
-        _pr.remove_prompt(self.cfg, self._mt_q.get().strip())
-        self._refresh_preset_menu()
-        self._meeting_set("Preset removed")
-
     def _mt_preset_pick(self, v):
         from . import prompts as _pr
+        self._mt_preset.set("Presets \u25be")
         if v == _pr.MANAGE_LABEL:
-            self._mt_preset.set("Presets \u25be")
             _pr.manage_dialog(self.win, self.cfg, self._refresh_preset_menu)
         else:
-            self._mt_q.set(v)
+            self._mt_qbox.delete("1.0", "end")
+            self._mt_qbox.insert("1.0", v)
 
     def _refresh_preset_menu(self):
         try:
@@ -1128,7 +1121,8 @@ class SettingsWindow:
             m = self._mt_presetmenu["menu"]
             m.delete(0, "end")
             for q in _pr.menu_items(self.cfg):
-                m.add_command(label=q, command=lambda v=q: self._mt_preset_pick(v))
+                lbl = q if len(q) <= 60 else q[:57] + "\u2026"
+                m.add_command(label=lbl, command=lambda v=q: self._mt_preset_pick(v))
         except Exception:
             pass
 

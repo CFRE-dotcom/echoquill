@@ -91,8 +91,34 @@ class ClipsTray:
             srow, "Search your clips…", self.refresh)
         _swrap.pack(fill="x")
 
+        self.cfg = {}
+        try:
+            from . import config as _cfg
+            self.cfg = _cfg.load()
+        except Exception:
+            pass
+
         self.body = tk.Frame(self.win, bg=theme.PANEL)
         self.body.pack(fill="both", expand=True, padx=8, pady=8)
+
+        foot = tk.Frame(self.win, bg=theme.PANEL)
+        foot.pack(fill="x", padx=8, pady=(0, 2))
+        _sv = tk.Label(foot, text="\U0001f4be Save shown", bg=theme.PANEL,
+                       fg=theme.ACCENT, font=("Segoe UI", 9), cursor="hand2")
+        _sv.pack(side="left")
+        _sv.bind("<Button-1>", lambda e: self._save_shown())
+        _sv.bind("<Enter>", lambda e, w=_sv: w.configure(fg=theme.FG))
+        _sv.bind("<Leave>", lambda e, w=_sv: w.configure(fg=theme.ACCENT))
+        helptip.tip(_sv, "Save the clips shown here to a text file in your "
+                    "EchoQuill\\Clips folder.")
+        _of = tk.Label(foot, text="\U0001f4c2 Open folder", bg=theme.PANEL,
+                       fg=theme.ACCENT, font=("Segoe UI", 9), cursor="hand2")
+        _of.pack(side="right")
+        _of.bind("<Button-1>", lambda e: self._open_clips_folder())
+        _of.bind("<Enter>", lambda e, w=_of: w.configure(fg=theme.FG))
+        _of.bind("<Leave>", lambda e, w=_of: w.configure(fg=theme.ACCENT))
+        helptip.tip(_of, "Open your EchoQuill\\Clips folder.")
+
         self.status = tk.Label(self.win, text="", bg=theme.PANEL, fg=theme.DIM,
                                font=("Segoe UI", 9))
         self.status.pack(pady=(0, 6))
@@ -144,9 +170,37 @@ class ClipsTray:
         for w in self.body.winfo_children():
             w.destroy()
         term = self._search_value().lower()
+        from . import folders
         entries = history.entries(limit=10)
+
+        # ---- folder bar ----
+        self._clip_folder = getattr(self, "_clip_folder", "All")
+        opts = ["All"] + folders.all_folders()
+        if self._clip_folder not in opts:
+            self._clip_folder = "All"
+        fbar = tk.Frame(self.body, bg=theme.PANEL)
+        fbar.pack(fill="x", pady=(0, 4))
+        tk.Label(fbar, text="Folder:", bg=theme.PANEL, fg=theme.DIM,
+                 font=("Segoe UI", 9)).pack(side="left")
+        from tkinter import ttk as _ttk
+        fv = tk.StringVar(value=self._clip_folder)
+        _ttk.OptionMenu(fbar, fv, self._clip_folder, *opts,
+                        command=self._set_clip_folder).pack(side="left", padx=6)
+        nf = tk.Label(fbar, text="\uff0b New folder", bg=theme.PANEL,
+                      fg=theme.ACCENT, font=("Segoe UI", 9), cursor="hand2")
+        nf.pack(side="left", padx=6)
+        nf.bind("<Button-1>", lambda e: self._new_folder())
+        nf.bind("<Enter>", lambda e, w=nf: w.configure(fg=theme.FG))
+        nf.bind("<Leave>", lambda e, w=nf: w.configure(fg=theme.ACCENT))
+        helptip.tip(nf, "Create a new folder, then move clips into it.")
+
+        if self._clip_folder != "All":
+            entries = [e for e in entries
+                       if folders.folder_of(e.get("text", "")) == self._clip_folder]
         if not entries:
-            tk.Label(self.body, text="No clips yet — dictate something!",
+            msg = ("Nothing in this folder yet." if self._clip_folder != "All"
+                   else "No clips yet - dictate something!")
+            tk.Label(self.body, text=msg,
                      bg=theme.PANEL, fg=theme.DIM).pack(pady=20)
             return
         for e in entries:
@@ -159,9 +213,21 @@ class ClipsTray:
             row = tk.Frame(self.body, bg=bg)
             row.pack(fill="x", pady=3)
             lbl = tk.Label(row, text=" " + shown, anchor="w", bg=bg,
-                           fg=theme.FG, font=("Segoe UI", 9), wraplength=270,
+                           fg=theme.FG, font=("Segoe UI", 9), wraplength=230,
                            justify="left", pady=6, padx=6, cursor="hand2")
             lbl.pack(side="left", fill="x", expand=True)
+            fname = folders.folder_of(text)
+            if fname:
+                tagn = fname if len(fname) <= 12 else fname[:11] + "\u2026"
+                tk.Label(row, text="\U0001f5c2 " + tagn, bg=bg, fg=theme.DIM,
+                         font=("Segoe UI", 8)).pack(side="right", padx=(0, 2))
+            fo = tk.Label(row, text="\U0001f5c2", bg=bg, fg=theme.DIM,
+                          font=("Segoe UI", 10), padx=4, cursor="hand2")
+            fo.pack(side="right")
+            fo.bind("<Button-1>", lambda ev, t=text: self._assign_folder(t))
+            fo.bind("<Enter>", lambda ev, w=fo: w.configure(fg=theme.ACCENT))
+            fo.bind("<Leave>", lambda ev, w=fo: w.configure(fg=theme.DIM))
+            helptip.tip(fo, "Move to a folder")
             ed = tk.Label(row, text="✎", bg=bg, fg=theme.DIM,
                           font=("Segoe UI", 10), padx=4, cursor="hand2")
             ed.pack(side="right")
@@ -180,6 +246,71 @@ class ClipsTray:
             lbl.bind("<ButtonPress-1>", lambda ev, t=text: self._press(ev, t))
             lbl.bind("<B1-Motion>", self._maybe_drag)
             lbl.bind("<ButtonRelease-1>", self._release)
+
+    def _set_clip_folder(self, v):
+        self._clip_folder = v
+        self.refresh()
+
+    def _new_folder(self):
+        from . import folder_dialog, folders
+        name = folder_dialog.new_folder(self.win)
+        if not name:
+            return
+        folders.create(name)
+        self._clip_folder = name
+        self.status.configure(text=f"Folder '{name}' created")
+        self.win.after(1500, lambda: self.status.configure(text=""))
+        self.refresh()
+
+    def _assign_folder(self, text):
+        from . import folder_dialog, folders
+        cur = folders.folder_of(text)
+        name = folder_dialog.move_to_folder(
+            self.win, current=cur, names=folders.all_folders())
+        if name is None:
+            return
+        folders.assign(text, name)
+        self.status.configure(text=(f"Moved to '{name}'" if name
+                                    else "Removed from folder"))
+        self.win.after(1500, lambda: self.status.configure(text=""))
+        self.refresh()
+
+    def _clips_folder(self):
+        from . import media_gui
+        return media_gui.clips_dir(self.cfg)
+
+    def _open_clips_folder(self):
+        import os
+        try:
+            os.startfile(self._clips_folder())
+        except Exception:
+            self.status.configure(text="Could not open folder")
+            self.win.after(1500, lambda: self.status.configure(text=""))
+
+    def _save_shown(self):
+        import os, time
+        from . import folders
+        entries = history.entries(limit=10)
+        if self._clip_folder != "All":
+            entries = [e for e in entries
+                       if folders.folder_of(e.get("text", "")) == self._clip_folder]
+        texts = [e.get("text", "") for e in entries if e.get("text", "").strip()]
+        if not texts:
+            self.status.configure(text="Nothing to save")
+            self.win.after(1500, lambda: self.status.configure(text=""))
+            return
+        tag = self._clip_folder if self._clip_folder != "All" else "clips"
+        stem = "clips-" + "".join(c for c in tag if c.isalnum() or c in " -_").strip()
+        fname = f"{stem or 'clips'}-{time.strftime('%Y%m%d-%H%M%S')}.txt"
+        sep = "\n\n" + ("-" * 40) + "\n\n"
+        try:
+            path = os.path.join(self._clips_folder(), fname)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(sep.join(texts))
+            self.status.configure(text=f"Saved {len(texts)} \u2192 Clips folder \u2713")
+        except Exception:
+            self.status.configure(text="Save failed")
+        self.win.after(2000, lambda: self.status.configure(text=""))
 
     def _delete(self, ts):
         history.delete(ts)
