@@ -41,6 +41,8 @@ jobs:
           --hidden-import keyboard
           --collect-all tkinterdnd2
           --collect-all yt_dlp
+          --collect-all soundcard
+          --hidden-import soundcard
           --collect-all keyring
           --hidden-import keyring.backends.Windows
           --hidden-import win32ctypes.core

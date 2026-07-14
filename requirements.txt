@@ -14,3 +14,4 @@ yt-dlp>=2025.1.1
 tkinterdnd2>=0.4.2
 keyring>=25.0
 pywin32-ctypes>=0.2.0 ; sys_platform == 'win32'
+soundcard>=0.4.2 ; sys_platform == 'win32'

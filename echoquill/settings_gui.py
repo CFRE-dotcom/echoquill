@@ -13,8 +13,8 @@ from . import theme
 
 
 class SettingsWindow:
-    SECTIONS = ["General", "Dictation", "Transcription", "Clipboard",
-                "Dictionary", "AI Enhancement", "Stats", "History",
+    SECTIONS = ["General", "AI Enhancement", "Clipboard", "Dictation",
+                "Dictionary", "Meeting", "Transcription", "History", "Stats",
                 "Help", "Feedback", "About"]
 
     def __init__(self, root: tk.Tk, cfg: dict, dictionary, on_save,
@@ -77,6 +77,7 @@ class SettingsWindow:
         body = {"General": self._build_general,
                 "Dictation": self._build_dictation,
                 "Transcription": self._build_transcription,
+                "Meeting": self._build_meeting,
                 "Clipboard": self._build_clipboard,
                 "Dictionary": self._build_dictionary,
                 "AI Enhancement": self._build_ai,
@@ -800,6 +801,167 @@ class SettingsWindow:
             except Exception as e:
                 msg(f"Update failed: {e}")
         threading.Thread(target=run, daemon=True).start()
+
+    def _build_meeting(self, f):
+        import threading
+        from . import meeting
+        self._title(f, "Meeting / Record",
+                    "Record what you HEAR on this PC (calls, webinars, any "
+                    "playing video - including Skool) and transcribe it "
+                    "locally. No link, no URL, no DevTools.")
+
+        if not meeting.available():
+            ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+                "System-audio capture isn't available in this build. "
+                "Reinstall the latest EchoQuill to enable it.")).pack(anchor="w")
+            return
+
+        self._mt_mic = tk.BooleanVar(value=False)
+        ttk.Checkbutton(f, text="Also record my microphone (for two-way calls)",
+                        variable=self._mt_mic).pack(anchor="w", pady=(0, 6))
+
+        nrow = ttk.Frame(f); nrow.pack(fill="x", pady=(0, 6))
+        ttk.Label(nrow, text="Name (optional):").pack(side="left")
+        self._mt_name = tk.StringVar()
+        ttk.Entry(nrow, textvariable=self._mt_name).pack(
+            side="left", fill="x", expand=True, padx=(8, 0), ipady=2)
+
+        brow = ttk.Frame(f); brow.pack(anchor="w", pady=(2, 6))
+        self._mt_start = ttk.Button(brow, text="\u25cf  Start recording",
+                                    style="Accent.TButton", command=self._meeting_start)
+        self._mt_start.pack(side="left")
+        self._mt_stop = ttk.Button(brow, text="\u25a0  Stop & transcribe",
+                                   command=self._meeting_stop, state="disabled")
+        self._mt_stop.pack(side="left", padx=8)
+        self._mt_status = ttk.Label(brow, text="", style="Dim.TLabel")
+        self._mt_status.pack(side="left", padx=10)
+
+        self._mt_out = theme.dark_text(f, wrap="word")
+        self._mt_out.pack(fill="both", expand=True, pady=(4, 6))
+
+        drow = ttk.Frame(f); drow.pack(anchor="w")
+        ttk.Button(drow, text="Summarize with AI",
+                   command=self._meeting_summarize).pack(side="left")
+        ttk.Button(drow, text="Save as .txt\u2026",
+                   command=self._meeting_save).pack(side="left", padx=8)
+        self._mt_rec = None
+
+    # ---------- meeting handlers ----------
+    def _meeting_set(self, msg):
+        try:
+            self.win.after(0, lambda: self._mt_status.configure(text=msg))
+        except Exception:
+            pass
+
+    def _meeting_start(self):
+        from . import meeting
+        self._mt_rec = meeting.MeetingRecorder(include_mic=self._mt_mic.get())
+        try:
+            self._mt_rec.start()
+        except Exception as e:
+            self._meeting_set(f"Could not start: {e}"); return
+        self._mt_start.configure(state="disabled")
+        self._mt_stop.configure(state="normal")
+        self._meeting_tick()
+
+    def _meeting_tick(self):
+        if self._mt_rec is not None and self._mt_rec._running:
+            s = int(self._mt_rec.elapsed())
+            self._mt_status.configure(text=f"\u25cf Recording  {s // 60:02d}:{s % 60:02d}")
+            self.win.after(500, self._meeting_tick)
+
+    def _meeting_stop(self):
+        import threading
+        self._mt_stop.configure(state="disabled")
+        self._meeting_set("Finishing\u2026")
+        rec = self._mt_rec
+
+        def run():
+            try:
+                audio = rec.stop()
+            except Exception as e:
+                self._meeting_set(f"Recording error: {e}")
+                self.win.after(0, lambda: self._mt_start.configure(state="normal"))
+                return
+            if audio is None or len(audio) < 8000:
+                self._meeting_set("Nothing captured. Is audio actually playing?")
+                self.win.after(0, lambda: self._mt_start.configure(state="normal"))
+                return
+            self._meeting_set("Transcribing\u2026 (runs locally)")
+            try:
+                from .transcriber import Transcriber
+                if not hasattr(self, "_mt_engine"):
+                    self._mt_engine = Transcriber(self.cfg.get("model", "base"))
+                model = self._mt_engine.load()
+                import numpy as np
+                lang = self.cfg.get("language", "auto")
+                lang = None if lang in ("", "auto") else lang
+                segs, _i = model.transcribe(np.asarray(audio, dtype="float32"),
+                                            language=lang, vad_filter=True)
+                text = " ".join(s.text.strip() for s in segs).strip()
+            except Exception as e:
+                self._meeting_set(f"Transcription failed: {e}")
+                self.win.after(0, lambda: self._mt_start.configure(state="normal"))
+                return
+
+            def show():
+                self._mt_out.delete("1.0", "end")
+                self._mt_out.insert("1.0", text)
+                self._mt_start.configure(state="normal")
+                self._meeting_set("Done \u2713 (saved to your Transcriptions folder)")
+            self.win.after(0, show)
+            # auto-save
+            try:
+                from .media_gui import transcripts_dir, safe_filename
+                import os
+                name = (self._mt_name.get().strip() or
+                        __import__("datetime").datetime.now().strftime(
+                            "Meeting %Y-%m-%d %H%M"))
+                folder = transcripts_dir(self.cfg)
+                out = os.path.join(folder, safe_filename(name))
+                base, n = out, 2
+                while os.path.exists(out):
+                    out = base[:-4] + f" ({n}).txt"; n += 1
+                with open(out, "w", encoding="utf-8") as fh:
+                    fh.write(f"{name}\n\n{text}")
+            except Exception:
+                pass
+        threading.Thread(target=run, daemon=True).start()
+
+    def _meeting_summarize(self):
+        import threading
+        text = self._mt_out.get("1.0", "end").strip()
+        if not text:
+            self._meeting_set("Nothing to summarize yet."); return
+        self._meeting_set("Summarizing with AI\u2026")
+
+        def run():
+            from . import ai_edit
+            ok, res = ai_edit.transform(
+                text, "Summarize this meeting/recording into concise key "
+                "points and a clear list of action items.", self.cfg)
+
+            def show():
+                if ok:
+                    self._mt_out.insert("1.0", "=== AI SUMMARY ===\n" + res +
+                                        "\n\n=== FULL TRANSCRIPT ===\n")
+                    self._meeting_set("Summary added \u2713")
+                else:
+                    self._meeting_set(res)
+            self.win.after(0, show)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _meeting_save(self):
+        from tkinter import filedialog
+        text = self._mt_out.get("1.0", "end").strip()
+        if not text:
+            self._meeting_set("Nothing to save yet."); return
+        p = filedialog.asksaveasfilename(parent=self.win, defaultextension=".txt",
+                                         filetypes=[("Text", "*.txt")])
+        if p:
+            with open(p, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            self._meeting_set("Saved \u2713")
 
     # ---------- actions ----------
 
