@@ -43,6 +43,8 @@ jobs:
           --collect-all yt_dlp
           --collect-all soundcard
           --hidden-import soundcard
+          --collect-all imageio_ffmpeg
+          --hidden-import imageio_ffmpeg
           --collect-all keyring
           --hidden-import keyring.backends.Windows
           --hidden-import win32ctypes.core

@@ -98,3 +98,81 @@ def save_wav(audio: "np.ndarray", path: str):
         w.setsampwidth(2)
         w.setframerate(SR)
         w.writeframes(pcm.tobytes())
+
+
+class ScreenRecorder:
+    """Records the whole desktop (ffmpeg gdigrab) AND system audio (loopback,
+    + optional mic), then muxes them into one MP4. Windows-only.
+
+    Same control surface as MeetingRecorder (start / stop -> audio / elapsed),
+    so the UI can use either interchangeably. stop() returns the audio array
+    for transcription; the muxed .mp4 is written to `dest`."""
+
+    def __init__(self, dest_mp4: str, include_mic: bool = False, fps: int = 15):
+        self.dest = dest_mp4
+        self.fps = fps
+        self.error = None
+        self._audio = MeetingRecorder(include_mic=include_mic)
+        self._proc = None
+        self._screen_tmp = None
+
+    @property
+    def _running(self):
+        return self._audio._running
+
+    def elapsed(self):
+        return self._audio.elapsed()
+
+    def _ffmpeg(self):
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+
+    def start(self):
+        import os
+        import subprocess
+        import tempfile
+        self._screen_tmp = os.path.join(tempfile.gettempdir(), "eq_screen.mp4")
+        ff = self._ffmpeg()
+        args = [ff, "-y", "-f", "gdigrab", "-framerate", str(self.fps),
+                "-i", "desktop", "-c:v", "libx264", "-preset", "ultrafast",
+                "-pix_fmt", "yuv420p", self._screen_tmp]
+        try:
+            self._proc = subprocess.Popen(
+                args, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL, creationflags=0x08000000)
+        except Exception as e:
+            self.error = f"screen capture: {e}"
+            self._proc = None
+        self._audio.start()   # audio in parallel
+
+    def stop(self):
+        import os
+        import subprocess
+        # finalize the screen recording (tell ffmpeg to quit gracefully)
+        try:
+            if self._proc and self._proc.poll() is None:
+                try:
+                    self._proc.communicate(b"q", timeout=10)
+                except Exception:
+                    self._proc.terminate()
+        except Exception:
+            pass
+        audio = self._audio.stop()
+        # write the audio to a wav and mux with the screen video
+        try:
+            import tempfile
+            ff = self._ffmpeg()
+            has_video = self._screen_tmp and os.path.exists(self._screen_tmp)
+            if audio is not None and has_video:
+                wav = os.path.join(tempfile.gettempdir(), "eq_audio.wav")
+                save_wav(audio, wav)
+                subprocess.run(
+                    [ff, "-y", "-i", self._screen_tmp, "-i", wav,
+                     "-c:v", "copy", "-c:a", "aac", "-shortest", self.dest],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    creationflags=0x08000000, timeout=300)
+            elif has_video:
+                os.replace(self._screen_tmp, self.dest)
+        except Exception as e:
+            self.error = f"mux: {e}"
+        return audio

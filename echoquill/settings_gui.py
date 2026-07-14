@@ -819,6 +819,10 @@ class SettingsWindow:
         self._mt_mic = tk.BooleanVar(value=False)
         ttk.Checkbutton(f, text="Also record my microphone (for two-way calls)",
                         variable=self._mt_mic).pack(anchor="w", pady=(0, 6))
+        self._mt_video = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            f, text="Also capture the screen (save an MP4 video + transcribe)",
+            variable=self._mt_video).pack(anchor="w", pady=(0, 6))
 
         nrow = ttk.Frame(f); nrow.pack(fill="x", pady=(0, 6))
         ttk.Label(nrow, text="Name (optional):").pack(side="left")
@@ -855,7 +859,21 @@ class SettingsWindow:
 
     def _meeting_start(self):
         from . import meeting
-        self._mt_rec = meeting.MeetingRecorder(include_mic=self._mt_mic.get())
+        self._mt_video_path = None
+        if getattr(self, "_mt_video", None) is not None and self._mt_video.get():
+            if not hasattr(meeting, "ScreenRecorder"):
+                self._meeting_set("Screen capture needs the latest build.")
+                return
+            import os, datetime
+            from .media_gui import transcripts_dir, safe_filename
+            nm = (self._mt_name.get().strip() or
+                  datetime.datetime.now().strftime("Recording %Y-%m-%d %H%M"))
+            self._mt_video_path = os.path.join(
+                transcripts_dir(self.cfg), safe_filename(nm)[:-4] + ".mp4")
+            self._mt_rec = meeting.ScreenRecorder(
+                self._mt_video_path, include_mic=self._mt_mic.get())
+        else:
+            self._mt_rec = meeting.MeetingRecorder(include_mic=self._mt_mic.get())
         try:
             self._mt_rec.start()
         except Exception as e:
@@ -908,7 +926,10 @@ class SettingsWindow:
                 self._mt_out.delete("1.0", "end")
                 self._mt_out.insert("1.0", text)
                 self._mt_start.configure(state="normal")
-                self._meeting_set("Done \u2713 (saved to your Transcriptions folder)")
+                if getattr(self, "_mt_video_path", None):
+                    self._meeting_set("Done \u2713 (MP4 video + transcript saved)")
+                else:
+                    self._meeting_set("Done \u2713 (saved to your Transcriptions folder)")
             self.win.after(0, show)
             # auto-save
             try:
