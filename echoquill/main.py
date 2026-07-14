@@ -232,6 +232,9 @@ class App:
                 elif ev == "quit":
                     self._quit()
                     return
+                elif ev == "restart":
+                    self._restart()
+                    return
                 elif isinstance(ev, tuple) and ev[0] == "overlay":
                     self._overlay_update(ev[1], ev[2] if len(ev) > 2 else "")
         except queue.Empty:
@@ -484,6 +487,7 @@ class App:
             on_clips=lambda: self.events.put("clips"),
             on_history=lambda: self.events.put("history"),
             on_quit=lambda: self.events.put("quit"),
+            on_restart=lambda: self.events.put("restart"),
             initial_section=section)
 
     def _on_settings_saved(self, cfg):
@@ -505,6 +509,24 @@ class App:
         ClipboardWindow(self.root)
 
 
+
+    def _restart(self):
+        """Relaunch EchoQuill (used after updating the video engine)."""
+        import os, sys, subprocess
+        try:
+            from .config import app_data_dir
+            (app_data_dir() / "update_in_progress").touch()  # new copy waits out the lock
+        except Exception:
+            pass
+        try:
+            exe = sys.executable
+            subprocess.Popen([exe], creationflags=0x00000008)  # DETACHED_PROCESS
+        except Exception:
+            try:
+                os.startfile(sys.executable)
+            except Exception:
+                pass
+        self._quit()
 
     def _quit(self):
         try:

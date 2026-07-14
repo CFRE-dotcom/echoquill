@@ -19,7 +19,7 @@ class SettingsWindow:
 
     def __init__(self, root: tk.Tk, cfg: dict, dictionary, on_save,
                  on_media=None, on_clips=None, on_history=None,
-                 on_quit=None, initial_section=None):
+                 on_quit=None, on_restart=None, initial_section=None):
         self.cfg = cfg
         self.dictionary = dictionary
         self.on_save = on_save
@@ -27,6 +27,7 @@ class SettingsWindow:
         self.on_clips = on_clips
         self.on_history = on_history
         self.on_quit = on_quit
+        self.on_restart = on_restart
 
         self.win = tk.Toplevel(root)
         self.win.title("EchoQuill Settings")
@@ -320,37 +321,15 @@ class SettingsWindow:
             "→ Transcribe video / URL.")).pack(anchor="w")
 
         ttk.Label(f, style="Section.TLabel",
-                  text="MEMBER-ONLY / SKOOL VIDEOS").pack(anchor="w", pady=(18, 4))
-        ttk.Label(f, style="Dim.TLabel", wraplength=460, text=(
-            "Skool, private YouTube/Vimeo and other login-gated videos need "
-            "your browser session. Pick the browser you're signed into and "
-            "EchoQuill reuses its cookies just for the download. Paste the "
-            "lesson's embedded video link — or the signed .m3u8 from the "
-            "browser Network tab — into the transcriber.")).pack(anchor="w")
-        crow = ttk.Frame(f); crow.pack(anchor="w", pady=(6, 0))
-        ttk.Label(crow, text="Sign in via browser:").pack(side="left")
-        self.cookies_var = tk.StringVar(
-            value=(self.cfg.get("yt_cookies_browser", "") or "Off"))
-
-        def _set_cookies(choice):
-            self.cfg["yt_cookies_browser"] = "" if choice == "Off" else choice
-            try:
-                from . import config as _c
-                _c.save(self.cfg)
-            except Exception:
-                pass
-        ttk.OptionMenu(crow, self.cookies_var, self.cookies_var.get(),
-                       "Off", "chrome", "edge", "firefox", "brave", "chromium",
-                       "opera", "vivaldi", command=_set_cookies
-                       ).pack(side="left", padx=8)
-
-        ttk.Label(f, style="Section.TLabel",
-                  text="YOUTUBE COOKIES (paste to sign in)").pack(anchor="w", pady=(12, 4))
+                  text="SIGN IN (YouTube bot-checks, Skool & member-only videos)"
+                  ).pack(anchor="w", pady=(16, 4))
         ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
             "YouTube trusts a logged-in session and stops the \"confirm you're "
             "not a bot\" wall. Install the \"Get cookies.txt LOCALLY\" browser "
             "extension, open youtube.com (logged in), click Export, and PASTE "
-            "the text here, then Save.")).pack(anchor="w")
+            "the WHOLE file here, then Save. The top line that says "
+            "\"generated file, do not edit\" is normal - leave it in; it's just "
+            "the cookies.txt format, not something EchoQuill made.")).pack(anchor="w")
         self.cookie_box = theme.dark_text(f, wrap="none", height=6)
         self.cookie_box.pack(fill="x", pady=(4, 4))
         try:
@@ -391,20 +370,35 @@ class SettingsWindow:
 
         erow = ttk.Frame(f); erow.pack(anchor="w", pady=(14, 0))
         ttk.Label(erow, text="Video engine (yt-dlp):").pack(side="left")
+        ttk.Button(erow, text="Update engine now",
+                   command=lambda: _upd_engine()).pack(side="left", padx=8)
+        self._restart_btn = ttk.Button(
+            erow, text="\u21bb Restart now", style="Accent.TButton",
+            command=lambda: (self.on_restart() if self.on_restart else None))
         self.engine_status = ttk.Label(erow, text="", style="Dim.TLabel")
+        self.engine_status.pack(side="left")
 
         def _upd_engine():
             import threading
+
             def run():
+                import sys as _sys
                 from . import ytdlp_updater as _yu
                 self.win.after(0, lambda: self.engine_status.configure(text="Updating\u2026"))
                 ver = _yu.update_now(lambda s: None)
-                self.win.after(0, lambda: self.engine_status.configure(
-                    text=(f"updated to {ver} - restart to apply" if ver
-                          else "update failed (check connection)")))
+                loaded = "yt_dlp" in _sys.modules
+
+                def done():
+                    if not ver:
+                        self.engine_status.configure(text="update failed (check connection)")
+                        return
+                    if loaded:
+                        self.engine_status.configure(text=f"updated to {ver}")
+                        self._restart_btn.pack(side="left", padx=6)
+                    else:
+                        self.engine_status.configure(text=f"updated to {ver} \u2014 active now")
+                self.win.after(0, done)
             threading.Thread(target=run, daemon=True).start()
-        ttk.Button(erow, text="Update engine now", command=_upd_engine).pack(side="left", padx=8)
-        self.engine_status.pack(side="left")
         try:
             from . import ytdlp_updater as _yu
             _v = _yu.installed_version()
