@@ -124,3 +124,56 @@ def attach(parent_win, container, title, text):
 
     _bind_tooltip(lbl, render)
     return lbl
+
+
+def menu_hover(menu, items_getter):
+    """Show the FULL text of a dropdown item while the pointer is over it.
+
+    `menu` is the underlying tk.Menu of a ttk.OptionMenu (opt["menu"]).
+    `items_getter()` returns the full-length item strings, in the same order
+    the menu entries were added, so a truncated entry can still be read in full.
+    """
+    state = {"tip": None}
+
+    def _hide():
+        if state["tip"] is not None:
+            try:
+                state["tip"].destroy()
+            except Exception:
+                pass
+            state["tip"] = None
+
+    def _on_select(_e=None):
+        try:
+            idx = menu.index("active")
+        except Exception:
+            idx = None
+        items = items_getter() or []
+        off = 0
+        try:
+            if menu.type(0) == "tearoff":
+                off = 1
+        except Exception:
+            pass
+        pos = idx - off if isinstance(idx, int) else None
+        if pos is None or pos < 0 or pos >= len(items):
+            _hide()
+            return
+        full = items[pos]
+        _hide()
+        try:
+            t = tk.Toplevel(menu)
+            t.overrideredirect(True)
+            t.attributes("-topmost", True)
+            tk.Label(t, text=full, bg=theme.FIELD, fg=theme.FG, justify="left",
+                     wraplength=460, borderwidth=1, relief="solid",
+                     font=("Segoe UI", 9), padx=7, pady=4).pack()
+            t.geometry(f"+{menu.winfo_pointerx() + 16}+{menu.winfo_pointery() + 12}")
+            state["tip"] = t
+        except Exception:
+            pass
+
+    menu.bind("<<MenuSelect>>", _on_select, add="+")
+    menu.bind("<Unmap>", lambda e: _hide(), add="+")
+    menu.bind("<Leave>", lambda e: _hide(), add="+")
+    menu.bind("<Destroy>", lambda e: _hide(), add="+")

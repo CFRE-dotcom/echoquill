@@ -111,38 +111,135 @@ class Scrollable(ttk.Frame):
         self.canvas.yview_scroll(int(-e.delta / 120), "units")
 
 
-def _install_context_menus(win):
-    """Right-click Cut/Copy/Paste on every entry and text box, app-wide."""
-    def popup(event):
-        w = event.widget
+def _clip_get_selection(w):
+    """Selected text in an Entry or Text, or '' if nothing is selected."""
+    try:
+        return w.selection_get()
+    except Exception:
+        return ""
+
+
+def _clip_delete_selection(w):
+    try:
+        w.delete("sel.first", "sel.last")
+    except Exception:
+        pass
+
+
+def clip_copy(w):
+    sel = _clip_get_selection(w)
+    if sel:
         try:
-            w.focus_set()                 # so Paste targets THIS field
+            w.clipboard_clear(); w.clipboard_append(sel)
         except Exception:
             pass
+    return "break"
 
-        def do(seq):
+
+def clip_cut(w):
+    sel = _clip_get_selection(w)
+    if sel:
+        try:
+            w.clipboard_clear(); w.clipboard_append(sel)
+        except Exception:
+            pass
+        _clip_delete_selection(w)
+    return "break"
+
+
+def clip_paste(w):
+    try:
+        txt = w.clipboard_get()
+    except Exception:
+        txt = ""
+    if txt:
+        _clip_delete_selection(w)         # replace any selection
+        try:
+            w.insert("insert", txt)
+        except Exception:
+            pass
+    return "break"
+
+
+def clip_select_all(w):
+    try:
+        if isinstance(w, tk.Text):
+            w.tag_add("sel", "1.0", "end-1c")
+        else:
+            w.select_range(0, "end")
+            w.icursor("end")
+    except Exception:
+        pass
+    return "break"
+
+
+def _install_context_menus(win):
+    """Right-click Cut/Copy/Paste on every entry and text box, app-wide.
+
+    Handlers act on the widget and clipboard DIRECTLY (not via <<Copy>> virtual
+    events), and the selection is captured the instant you right-click - before
+    the menu can steal focus and clear it. Keyboard Ctrl+C/X/V/A are also bound
+    at the class level so they never depend on Tk's default virtual-event wiring.
+    """
+    def popup(event):
+        w = event.widget
+        sel = _clip_get_selection(w)      # capture BEFORE the menu grabs focus
+        has_sel = bool(sel)
+
+        def _copy():
+            if sel:
+                try:
+                    w.clipboard_clear(); w.clipboard_append(sel)
+                except Exception:
+                    pass
+
+        def _cut():
+            if sel:
+                try:
+                    w.clipboard_clear(); w.clipboard_append(sel)
+                except Exception:
+                    pass
+                _clip_delete_selection(w)
+
+        def _paste():
             try:
-                w.event_generate(seq)
+                w.focus_set()
             except Exception:
                 pass
+            clip_paste(w)
+
         m = tk.Menu(win, tearoff=0, bg=FIELD, fg=FG,
                     activebackground=ACCENT, activeforeground="#ffffff", bd=0)
-        m.add_command(label="Cut", command=lambda: do("<<Cut>>"))
-        m.add_command(label="Copy", command=lambda: do("<<Copy>>"))
-        m.add_command(label="Paste", command=lambda: do("<<Paste>>"))
+        m.add_command(label="Cut", command=_cut,
+                      state=("normal" if has_sel else "disabled"))
+        m.add_command(label="Copy", command=_copy,
+                      state=("normal" if has_sel else "disabled"))
+        m.add_command(label="Paste", command=_paste)
         m.add_separator()
-        m.add_command(label="Select all", command=lambda: do("<<SelectAll>>"))
+        m.add_command(label="Select all", command=lambda: clip_select_all(w))
         try:
             m.tk_popup(event.x_root, event.y_root)
         finally:
-            m.grab_release()              # <-- the fix: menu stays open on Windows
+            m.grab_release()
         return "break"
+
     for cls in ("Entry", "TEntry", "Text", "TCombobox", "TSpinbox"):
         for btn in ("<Button-3>", "<Button-2>"):
             try:
                 win.bind_class(cls, btn, popup)
             except Exception:
                 pass
+        try:
+            win.bind_class(cls, "<Control-c>", lambda e: clip_copy(e.widget))
+            win.bind_class(cls, "<Control-C>", lambda e: clip_copy(e.widget))
+            win.bind_class(cls, "<Control-x>", lambda e: clip_cut(e.widget))
+            win.bind_class(cls, "<Control-X>", lambda e: clip_cut(e.widget))
+            win.bind_class(cls, "<Control-v>", lambda e: clip_paste(e.widget))
+            win.bind_class(cls, "<Control-V>", lambda e: clip_paste(e.widget))
+            win.bind_class(cls, "<Control-a>", lambda e: clip_select_all(e.widget))
+            win.bind_class(cls, "<Control-A>", lambda e: clip_select_all(e.widget))
+        except Exception:
+            pass
 
 
 def dark_listbox(parent, **kw) -> tk.Listbox:

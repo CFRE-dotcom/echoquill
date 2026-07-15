@@ -66,8 +66,22 @@ def open_editor(parent, text, on_save, cfg=None, title="Edit", anchor=None):
     bar = tk.Frame(dlg, bg=theme.PANEL)
     bar.pack(side="bottom", fill="x", padx=14, pady=(8, 12))
 
+    try:
+        from . import folders as _folders
+        folder_state = {"name": _folders.folder_of(text)}
+    except Exception:
+        folder_state = {"name": ""}
+
     def save():
-        on_save(box.get("1.0", "end").strip())
+        new_text = box.get("1.0", "end").strip()
+        try:
+            from . import folders
+            if new_text != text:
+                folders.assign(text, "")          # migrate off the old text key
+            folders.assign(new_text, folder_state["name"])   # "" == no folder
+        except Exception:
+            pass
+        on_save(new_text)
         dlg.destroy()
 
     tk.Button(bar, text="Save", command=save, bg=theme.ACCENT, fg="#ffffff",
@@ -78,6 +92,32 @@ def open_editor(parent, text, on_save, cfg=None, title="Edit", anchor=None):
               fg=theme.FG, activebackground=theme.SIDEBAR, activeforeground=theme.FG,
               borderwidth=0, padx=16, pady=6, cursor="hand2",
               font=("Segoe UI", 10)).pack(side="right", padx=8)
+
+    def _folder_label():
+        n = folder_state["name"]
+        show = n if n else "None"
+        if len(show) > 16:
+            show = show[:15] + "\u2026"
+        return "\U0001f5c2 Folder: " + show
+
+    def _choose_folder():
+        from . import folder_dialog, folders
+        res = folder_dialog.move_to_folder(
+            dlg, current=folder_state["name"], names=folders.all_folders())
+        if res is None:
+            folder_btn.configure(text=_folder_label())   # folders may have changed
+            return
+        folder_state["name"] = res
+        folder_btn.configure(text=_folder_label())
+
+    folder_btn = tk.Button(bar, text=_folder_label(), command=_choose_folder,
+                           bg=theme.FIELD, fg=theme.FG,
+                           activebackground=theme.SIDEBAR, activeforeground=theme.FG,
+                           borderwidth=0, padx=14, pady=6, cursor="hand2",
+                           font=("Segoe UI", 10))
+    folder_btn.pack(side="left")
+    _tooltip(folder_btn, "Add this to a folder, remove it from one, or create / "
+                         "delete folders. Applied when you Save.")
 
     # ---- status line (its own row, always visible) ----
     status = tk.Label(dlg, text="", bg=theme.PANEL, fg=theme.DIM,

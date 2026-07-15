@@ -908,6 +908,9 @@ class SettingsWindow:
             command=self._mt_preset_pick)
         self._mt_presetmenu.configure(width=18)
         self._mt_presetmenu.pack(side="left", padx=(6, 0))
+        self._refresh_preset_menu()                      # truncate long items
+        helptip.menu_hover(self._mt_presetmenu["menu"],
+                           lambda: _pr.menu_items(self.cfg))
         helptip.tip(self._mt_presetmenu, "Pick a ready-made question, or the "
                     "bottom item to add / edit your own.")
         qrow = ttk.Frame(f); qrow.pack(fill="x", pady=(4, 4))
