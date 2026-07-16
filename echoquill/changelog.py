@@ -507,3 +507,9 @@ v1.11.2  (2026-07-05)
 v1.11.1  (2026-07-05)
     Free tier: 5 lifetime video transcriptions; dictation unlimited forever
 """
+
+
+import re as _re
+_parts = TEXT.split("ECHOQUILL FREE")
+PRO_COUNT = len(_re.findall(r"(?m)^v\d", _parts[0]))
+FREE_COUNT = len(_re.findall(r"(?m)^v\d", _parts[1])) if len(_parts) > 1 else 0

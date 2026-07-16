@@ -66,10 +66,42 @@ class SettingsWindow:
         tk.Label(self.sidebar, text="$5/mo · $39/yr", bg=theme.SIDEBAR,
                  fg=theme.DIM, font=("Segoe UI", 8)).pack(side="bottom")
 
+        navwrap = tk.Frame(self.sidebar, bg=theme.SIDEBAR)
+        navwrap.pack(side="top", fill="both", expand=True)
+        self._navcanvas = tk.Canvas(navwrap, bg=theme.SIDEBAR,
+                                    highlightthickness=0, width=180)
+        _navsb = ttk.Scrollbar(navwrap, orient="vertical",
+                               command=self._navcanvas.yview)
+        self._navinner = tk.Frame(self._navcanvas, bg=theme.SIDEBAR)
+        _nid = self._navcanvas.create_window((0, 0), window=self._navinner,
+                                             anchor="nw")
+        self._navcanvas.configure(yscrollcommand=_navsb.set)
+        self._navcanvas.pack(side="left", fill="both", expand=True)
+
+        def _nav_cfg(_e=None):
+            try:
+                self._navcanvas.configure(scrollregion=self._navcanvas.bbox("all"))
+                need = (self._navinner.winfo_reqheight()
+                        > self._navcanvas.winfo_height() + 1)
+                if need and not _navsb.winfo_ismapped():
+                    _navsb.pack(side="right", fill="y")
+                elif not need and _navsb.winfo_ismapped():
+                    _navsb.pack_forget()
+            except Exception:
+                pass
+        self._navinner.bind("<Configure>", _nav_cfg)
+        self._navcanvas.bind("<Configure>", lambda e: (
+            self._navcanvas.itemconfigure(_nid, width=e.width), _nav_cfg()))
+        self._navcanvas.bind("<Enter>", lambda e: self._navcanvas.bind_all(
+            "<MouseWheel>", lambda ev: self._navcanvas.yview_scroll(
+                int(-ev.delta / 120), "units")))
+        self._navcanvas.bind("<Leave>",
+                             lambda e: self._navcanvas.unbind_all("<MouseWheel>"))
+
         self._nav_buttons = {}
         self._frames = {}
         for name in self.SECTIONS:
-            b = tk.Label(self.sidebar, text=name, bg=theme.SIDEBAR,
+            b = tk.Label(self._navinner, text=name, bg=theme.SIDEBAR,
                          fg=theme.DIM, font=("Segoe UI", 11), anchor="w",
                          padx=18, pady=8, cursor="hand2")
             b.pack(fill="x")
@@ -704,7 +736,12 @@ class SettingsWindow:
 
     def _build_whatsnew(self, f):
         from . import changelog
-        ttk.Label(f, text="What\u2019s New", style="Title.TLabel").pack(anchor="w")
+        hdr = ttk.Frame(f); hdr.pack(fill="x")
+        ttk.Label(hdr, text="What\u2019s New", style="Title.TLabel").pack(side="left")
+        ttk.Label(hdr, style="Dim.TLabel", text=(
+            f"Free \u2014 {getattr(changelog, 'FREE_COUNT', 0)} updates   \u00b7   "
+            f"Pro \u2014 {getattr(changelog, 'PRO_COUNT', 0)} updates")
+            ).pack(side="right")
         ttk.Label(f, style="Dim.TLabel", wraplength=560, text=(
             "Every update to EchoQuill, newest first \u2014 Pro and Free."
             )).pack(anchor="w", pady=(2, 8))
@@ -1205,7 +1242,7 @@ class SettingsWindow:
                        "full screen as MP4, then transcribe and Ask AI, all "
                        "locally.\n\n1) Tick mic/screen if you want them.\n"
                        "2) Name it.\n3) Start, then Stop & transcribe.").pack(side="left", padx=8)
-        ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+        ttk.Label(f, style="Dim.TLabel", wraplength=640, text=(
             "Record what you HEAR on this PC (calls, webinars, any playing "
             "video - including Skool) and transcribe it locally. No link, no "
             "URL, no DevTools.")).pack(anchor="w")
@@ -1308,6 +1345,8 @@ class SettingsWindow:
         _b5.pack(side="left", padx=6)
         helptip.tip(_b5, "Clear the text area.")
 
+        ttk.Label(f, text="Transcript", style="Section.TLabel").pack(
+            anchor="w", pady=(6, 0))
         self._mt_out = theme.dark_text(f, wrap="word", height=12)
         self._mt_out.pack(fill="both", expand=True, pady=(2, 6))
         self._mt_rec = None
