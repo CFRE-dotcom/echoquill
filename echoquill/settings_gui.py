@@ -448,13 +448,12 @@ class SettingsWindow:
         vrow = ttk.Frame(f); vrow.pack(fill="x", pady=(6, 2))
         ttk.Label(vrow, text="Voice:").pack(side="left")
         self._ra_voice = tk.StringVar(value="(add key, then Load voices)")
+        _lv = ttk.Button(vrow, text="Load voices", command=self._ra_load_voices)
+        _lv.pack(side="right")
+        helptip.tip(_lv, "Fetch the voices on your ElevenLabs account.")
         self._ra_menu = ttk.OptionMenu(vrow, self._ra_voice,
                                        "(add key, then Load voices)")
-        self._ra_menu.configure(width=24)
-        self._ra_menu.pack(side="left", padx=(6, 6))
-        _lv = ttk.Button(vrow, text="Load voices", command=self._ra_load_voices)
-        _lv.pack(side="left")
-        helptip.tip(_lv, "Fetch the voices on your ElevenLabs account.")
+        self._ra_menu.pack(side="left", fill="x", expand=True, padx=(6, 8))
 
         drow = ttk.Frame(f); drow.pack(fill="x", pady=(8, 0))
         _od = ttk.Button(drow, text="\U0001f4c4 Load a document\u2026",
@@ -464,7 +463,7 @@ class SettingsWindow:
                     "the box, so you can convert it to audio.")
         _conv = ttk.Button(drow, text="\U0001f399 Convert to audio",
                            style="Accent.TButton", command=self._ra_do_play)
-        _conv.pack(side="left", padx=(8, 0))
+        _conv.pack(side="left", fill="x", expand=True, padx=(8, 0))
         helptip.tip(_conv, "Turn the text into audio. Then use the player to "
                     "listen, or Save as MP3.")
 

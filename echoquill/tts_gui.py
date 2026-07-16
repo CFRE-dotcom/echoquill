@@ -104,13 +104,12 @@ class ReadAloudWindow:
         vrow.pack(fill="x", padx=18, pady=(6, 2))
         ttk.Label(vrow, text="Voice:").pack(side="left")
         self.voice_var = tk.StringVar(value="(add key, then Load voices)")
+        _lv = ttk.Button(vrow, text="Load voices", command=self._load_voices)
+        _lv.pack(side="right")
+        helptip.tip(_lv, "Fetch the voices on your ElevenLabs account.")
         self.voice_menu = ttk.OptionMenu(vrow, self.voice_var,
                                          "(add key, then Load voices)")
-        self.voice_menu.configure(width=24)
-        self.voice_menu.pack(side="left", padx=(6, 6))
-        _lv = ttk.Button(vrow, text="Load voices", command=self._load_voices)
-        _lv.pack(side="left")
-        helptip.tip(_lv, "Fetch the voices on your ElevenLabs account.")
+        self.voice_menu.pack(side="left", fill="x", expand=True, padx=(6, 8))
 
         # Load-document + Convert sit together, right above the text box
         drow = ttk.Frame(self.win); drow.pack(fill="x", padx=18, pady=(8, 0))
@@ -120,7 +119,7 @@ class ReadAloudWindow:
                     "the box, so you can convert it to audio.")
         self.convert_btn = ttk.Button(drow, text="🎙 Convert to audio",
                                       style="Accent.TButton", command=self._play)
-        self.convert_btn.pack(side="left", padx=(8, 0))
+        self.convert_btn.pack(side="left", fill="x", expand=True, padx=(8, 0))
         helptip.tip(self.convert_btn, "Turn the text into audio. Then use the "
                     "player to listen, or Save as MP3.")
 
