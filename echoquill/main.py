@@ -165,6 +165,7 @@ class App:
                     else "Start dictation",
                     lambda: self.events.put("toggle"), default=True),
                 pystray.MenuItem("Voice command", lambda: self.events.put("toggle_command")),
+                pystray.MenuItem("Transcribe video / URL", lambda: self.events.put("media")),
                 pystray.MenuItem("Settings…", lambda: self.events.put("settings")),
                 pystray.MenuItem("Meeting / Record", lambda: self.events.put("meeting")),
                 pystray.MenuItem("Read aloud (Text-to-speech)", lambda: self.events.put("read_aloud")),
