@@ -71,7 +71,8 @@ class SettingsWindow:
         self._navcanvas = tk.Canvas(navwrap, bg=theme.SIDEBAR,
                                     highlightthickness=0, width=180)
         _navsb = ttk.Scrollbar(navwrap, orient="vertical",
-                               command=self._navcanvas.yview)
+                               command=self._navcanvas.yview,
+                               style="Sidebar.Vertical.TScrollbar")
         self._navinner = tk.Frame(self._navcanvas, bg=theme.SIDEBAR)
         _nid = self._navcanvas.create_window((0, 0), window=self._navinner,
                                              anchor="nw")

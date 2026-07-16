@@ -110,6 +110,20 @@ def apply(win) -> ttk.Style:
                     arrowcolor=_thumb, relief="flat")
     for _o in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
         style.map(_o, background=[("pressed", ACCENT), ("active", ACCENT)])
+    # Bold, obvious scrollbar for the left menu (accent-blue, a touch wider) so
+    # it's clear there's more to scroll - not the muted gray used elsewhere.
+    try:
+        style.layout("Sidebar.Vertical.TScrollbar", [
+            ("Vertical.Scrollbar.trough", {"sticky": "nswe", "children": [
+                ("Vertical.Scrollbar.thumb",
+                 {"expand": "1", "sticky": "nswe"})]})])
+    except Exception:
+        pass
+    style.configure("Sidebar.Vertical.TScrollbar", troughcolor=SIDEBAR,
+                    background=ACCENT, bordercolor=SIDEBAR, lightcolor=ACCENT,
+                    darkcolor=ACCENT, arrowcolor=ACCENT, relief="flat", width=14)
+    style.map("Sidebar.Vertical.TScrollbar",
+              background=[("pressed", "#3396ff"), ("active", "#3396ff")])
     _install_context_menus(win)
     return style
 

@@ -5,7 +5,7 @@
 ; building dist\EchoQuill.exe with build_exe.bat.
 
 #define AppName "EchoQuill"
-#define AppVersion "1.23.3"
+#define AppVersion "1.23.4"
 #define AppExe "EchoQuill.exe"
 
 [Setup]
