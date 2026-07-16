@@ -141,3 +141,43 @@ def manage_dialog(parent, cfg, on_change=lambda: None):
     ttk.Button(brow, text="Delete selected", command=delete).pack(side="left", padx=6)
     ttk.Button(brow, text="Done", style="Accent.TButton",
                command=dlg.destroy).pack(side="right")
+
+
+# ---- saved question sets (named groups of presets you can re-run) ----
+
+def get_sets(cfg):
+    return cfg.get("prompt_sets") or []
+
+
+def set_names(cfg):
+    return [s.get("name", "") for s in get_sets(cfg) if s.get("name")]
+
+
+def get_set(cfg, name):
+    for s in get_sets(cfg):
+        if s.get("name") == name:
+            return list(s.get("questions") or [])
+    return []
+
+
+def save_set(cfg, name, questions):
+    name = (name or "").strip()
+    if not name:
+        return
+    sets = [s for s in get_sets(cfg) if s.get("name") != name]
+    sets.append({"name": name, "questions": list(questions)})
+    cfg["prompt_sets"] = sets
+    try:
+        from . import config as _c
+        _c.save(cfg)
+    except Exception:
+        pass
+
+
+def delete_set(cfg, name):
+    cfg["prompt_sets"] = [s for s in get_sets(cfg) if s.get("name") != name]
+    try:
+        from . import config as _c
+        _c.save(cfg)
+    except Exception:
+        pass
