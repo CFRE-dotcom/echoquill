@@ -66,7 +66,8 @@ class Overlay:
     def __init__(self, root: tk.Tk, on_toggle=None, on_settings=None,
                  on_stats=None, on_quit=None, on_history=None,
                  on_clips=None, on_media=None, on_command=None,
-                 on_help=None, on_meeting=None, level_provider=None):
+                 on_help=None, on_meeting=None, on_read_aloud=None,
+                 level_provider=None):
         self.root = root
         self.on_toggle = on_toggle
         self.on_settings = on_settings
@@ -78,6 +79,7 @@ class Overlay:
         self.on_command = on_command
         self.on_help = on_help
         self.on_meeting = on_meeting
+        self.on_read_aloud = on_read_aloud
         self.level_provider = level_provider or (lambda: 0.0)
         self.win = None
         self.canvas = None
@@ -139,6 +141,9 @@ class Overlay:
             m.add_command(label="Transcribe video / URL…", command=self.on_media)
         if self.on_meeting:
             m.add_command(label="Meeting / Record…", command=self.on_meeting)
+        if self.on_read_aloud:
+            m.add_command(label="Read aloud (Text-to-speech)…",
+                          command=self.on_read_aloud)
         if self.on_history:
             m.add_command(label="All recent transcriptions…", command=self.on_history)
         if self.on_settings:

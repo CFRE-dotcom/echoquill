@@ -26,13 +26,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          pip install -r requirements.txt pyinstaller pyflakes
 
       - name: Verify UI wiring (no undefined button handlers)
         run: python scripts/check_wiring.py
 
       - name: Generate icon
         run: python scripts/gen_icon.py
+
+      - name: Guard - no undefined names / broken wiring
+        run: |
+          python scripts/check_undefined.py
+          python scripts/check_wiring.py
 
       - name: Build EchoQuill (folder build - fewer antivirus false positives)
         run: >
@@ -46,6 +51,10 @@ jobs:
           --collect-all yt_dlp
           --collect-all soundcard
           --hidden-import soundcard
+          --collect-all docx
+          --hidden-import pypdf
+          --hidden-import qrcode
+          --hidden-import PIL.ImageTk
           --collect-all imageio_ffmpeg
           --hidden-import imageio_ffmpeg
           --collect-all keyring

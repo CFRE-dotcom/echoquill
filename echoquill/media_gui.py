@@ -215,6 +215,17 @@ def clips_dir(cfg) -> str:
     return _subfolder(cfg, "Clips")
 
 
+def narration_dir(cfg) -> str:
+    override = (cfg or {}).get("narration_dir")
+    if override:
+        try:
+            os.makedirs(override, exist_ok=True)
+            return override
+        except Exception:
+            pass
+    return _subfolder(cfg, "Narration")
+
+
 class MediaWindow:
     def __init__(self, root: tk.Tk, transcriber, cfg: dict):
         self.transcriber = transcriber

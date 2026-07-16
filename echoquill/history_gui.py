@@ -4,10 +4,14 @@
 Free keeps the last 10; Pro pages through everything.
 """
 
+import ctypes
+import threading
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from . import favorites, helptip, history, theme, widgets
+from . import favorites, helptip, history, injector, theme, widgets
+from .clips_gui import _cursor_pos, _click_at_cursor, DRAG_THRESHOLD
 
 
 class ClipboardWindow:
@@ -35,7 +39,8 @@ class ClipboardWindow:
         ttk.Label(_title_row, text="Recent transcriptions",
                   style="Title.TLabel").pack(side="left")
         helptip.attach(self.win, _title_row, "Recent transcriptions — help",
-                       "Click a line to copy it.\n"
+                       "Click a line to paste it into the app you were just in.\n"
+                       "Drag a line onto any text box to drop the text there.\n"
                        "★  Favorite (click again to remove)\n"
                        "✎  Edit the text (with Ask AI)\n"
                        "✕  Delete\n\n"
@@ -99,6 +104,12 @@ class ClipboardWindow:
         self._scroll = theme.Scrollable(self.win)
         self._scroll.pack(fill="both", expand=True, padx=16, pady=(4, 4))
         self.body = self._scroll.inner
+
+        # clipboard-style drag/drop: remember the app you were last in
+        self._last_target = None
+        self._watching = True
+        threading.Thread(target=self._watch_foreground, daemon=True).start()
+        self.win.bind("<Destroy>", lambda e: setattr(self, "_watching", False))
 
         self.refresh()
 
@@ -193,8 +204,10 @@ class ClipboardWindow:
                        font=("Segoe UI", 9), justify="left", pady=7, padx=6,
                        cursor="hand2")
         lbl.pack(side="left", fill="x", expand=True)
-        lbl.bind("<Button-1>", lambda ev, t=text: self._copy_one(t))
-        lbl.bind("<Double-Button-1>", lambda ev, t=text, s=ts: self._edit_one(t, s))
+        lbl.configure(cursor="hand2")
+        lbl.bind("<ButtonPress-1>", lambda ev, t=text: self._press(ev, t))
+        lbl.bind("<B1-Motion>", self._maybe_drag)
+        lbl.bind("<ButtonRelease-1>", self._release)
 
         star_on = favorites.is_favorite(text)
         st = tk.Label(row, text="★" if star_on else "☆", bg=theme.FIELD,
@@ -290,6 +303,81 @@ class ClipboardWindow:
             self._flash("Copied ✓")
         except Exception:
             self._flash("Copy failed")
+
+    # ---------- clipboard-style click-to-paste / drag-to-drop ----------
+
+    def _own_hwnd(self):
+        try:
+            return ctypes.windll.user32.GetParent(self.win.winfo_id())
+        except Exception:
+            return None
+
+    def _watch_foreground(self):
+        u32 = ctypes.windll.user32
+        while getattr(self, "_watching", False):
+            try:
+                fg = u32.GetForegroundWindow()
+                if fg and fg != self._own_hwnd():
+                    self._last_target = fg
+            except Exception:
+                pass
+            time.sleep(0.4)
+
+    def _press(self, e, text):
+        self._drag_text = text
+        self._press_x, self._press_y = e.x_root, e.y_root
+        self._dragging = False
+
+    def _maybe_drag(self, e):
+        if not self._dragging and (abs(e.x_root - self._press_x) > DRAG_THRESHOLD
+                                   or abs(e.y_root - self._press_y) > DRAG_THRESHOLD):
+            self._dragging = True
+            self.win.configure(cursor="hand2")
+            self._flash("Carrying it — release over any text box")
+
+    def _release(self, e):
+        self.win.configure(cursor="")
+        if not getattr(self, "_dragging", False):
+            self._paste_to_last_app(getattr(self, "_drag_text", ""))
+            return
+        try:
+            pt = _cursor_pos()
+            hwnd = ctypes.windll.user32.WindowFromPoint(pt)
+            root_hwnd = ctypes.windll.user32.GetAncestor(hwnd, 2)   # GA_ROOT
+            if not hwnd or root_hwnd == self._own_hwnd():
+                self._flash("Dropped on this window — click a line to paste instead")
+                return
+            import pyperclip
+            pyperclip.copy(self._drag_text)
+            ctypes.windll.user32.SetForegroundWindow(root_hwnd)
+            time.sleep(0.15)
+            _click_at_cursor()
+            time.sleep(0.10)
+            injector.press_ctrl_v()
+            self._flash("Dropped ✓")
+        except Exception:
+            self._flash("Copied ✓ — Ctrl+V to paste")
+
+    def _paste_to_last_app(self, text):
+        if not text:
+            return
+        try:
+            import pyperclip
+            pyperclip.copy(text)
+        except Exception:
+            self._flash("Copy failed")
+            return
+        target = self._last_target
+        if target:
+            try:
+                ctypes.windll.user32.SetForegroundWindow(target)
+                time.sleep(0.20)
+                injector.press_ctrl_v()
+                self._flash("Pasted into your last app ✓")
+            except Exception:
+                self._flash("Copied ✓ — Ctrl+V to paste")
+        else:
+            self._flash("Copied ✓ — Ctrl+V to paste")
 
     def _star(self, text):
         favorites.toggle(text)

@@ -9,7 +9,7 @@ def _bearer(cfg: dict) -> str:
     return (cfg.get("ai_api_key", "") or "").strip()
 
 
-def ask(question: str, segments, cfg: dict) -> str:
+def ask(question: str, segments, cfg: dict, title: str = "", url: str = "") -> str:
     """segments: list of (seconds, text). Returns the answer or an error note."""
     import requests
     base_url = (cfg.get("ai_base_url", "") or "").rstrip("/")
@@ -26,12 +26,19 @@ def ask(question: str, segments, cfg: dict) -> str:
     if len(context) > 24000:                      # keep within model limits
         context = context[:12000] + "\n[...]\n" + context[-12000:]
 
+    meta = ""
+    if title:
+        meta += f"VIDEO TITLE: {title}\n"
+    if url:
+        meta += f"VIDEO URL: {url}\n"
     system = (
-        "You answer questions about a video using ONLY its transcript below. "
-        "Cite the timestamp(s) where the answer appears, like [12:34]. "
-        "If the transcript doesn't contain the answer, say exactly: "
-        "\"The video doesn't cover that.\" Do not use outside knowledge.\n\n"
-        "TRANSCRIPT:\n" + context)
+        "You answer questions about a video using its title, URL, and the "
+        "transcript below. Cite timestamps like [12:34] when you quote the "
+        "transcript. Answer directly with only what is present - if something "
+        "isn't there, simply leave it out. Do NOT add disclaimers, 'not found' "
+        "notes, or say the video doesn't cover it, and never invent links or "
+        "facts that aren't in the material.\n\n"
+        + meta + "\nTRANSCRIPT:\n" + context)
     from . import ai_call
     ok, out = ai_call.chat(cfg, system, question, temperature=0.1, timeout=180)
     return out

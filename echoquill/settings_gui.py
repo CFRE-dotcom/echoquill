@@ -14,8 +14,9 @@ from . import theme
 
 class SettingsWindow:
     SECTIONS = ["General", "AI Enhancement", "Clipboard", "Dictation",
-                "Dictionary", "Meeting", "Transcription", "History", "Stats",
-                "Help", "Feedback", "About"]
+                "Dictionary", "Meeting", "Read aloud", "Transcription",
+                "History", "Stats", "Help", "Feedback", "About",
+                "What\u2019s New"]
 
     def __init__(self, root: tk.Tk, cfg: dict, dictionary, on_save,
                  on_media=None, on_clips=None, on_history=None,
@@ -79,6 +80,7 @@ class SettingsWindow:
                 "Dictation": self._build_dictation,
                 "Transcription": self._build_transcription,
                 "Meeting": self._build_meeting,
+                "Read aloud": self._build_read_aloud,
                 "Clipboard": self._build_clipboard,
                 "Dictionary": self._build_dictionary,
                 "AI Enhancement": self._build_ai,
@@ -86,11 +88,19 @@ class SettingsWindow:
                 "History": self._build_history,
                 "Help": self._build_help,
                 "Feedback": self._build_feedback,
-                "About": self._build_about}
+                "About": self._build_about,
+                "What\u2019s New": self._build_whatsnew}
+        _noscroll = {"Meeting", "Read aloud", "Transcription", "History",
+                     "Help", "Feedback", "Dictionary", "What\u2019s New"}
         for name, builder in body.items():
-            sc = theme.Scrollable(self.content)
-            builder(sc.inner)
-            self._frames[name] = sc
+            if name in _noscroll:
+                fr = ttk.Frame(self.content)
+                builder(fr)
+                self._frames[name] = fr
+            else:
+                sc = theme.Scrollable(self.content)
+                builder(sc.inner)
+                self._frames[name] = sc
 
         self._show(initial_section if initial_section in self.SECTIONS
                    else "General")
@@ -368,6 +378,339 @@ class SettingsWindow:
         ttk.Button(crow2, text="Clear", command=_clear_cookies).pack(side="left", padx=6)
         self.cookie_status.pack(side="left", padx=8)
 
+
+    def _build_read_aloud(self, f):
+        from . import helptip, player
+        ttk.Label(f, text="Read aloud (Text-to-speech)",
+                  style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, style="Dim.TLabel", wraplength=560, text=(
+            "Turn text into spoken audio.  1) Paste text below, or load a "
+            "document.  2) Pick a voice.  3) Click \u201cConvert to audio.\u201d  "
+            "Then play it, save an MP3, or send it to your phone. Uses your own "
+            "ElevenLabs account (key kept in Windows Credential Manager)."
+            )).pack(anchor="w", pady=(2, 8))
+
+        frow = ttk.Frame(f); frow.pack(fill="x", pady=(0, 6))
+        ttk.Label(frow, text="Save narrations to:").pack(side="left")
+        ttk.Button(frow, text="Change\u2026",
+                   command=self._ra_choose_folder).pack(side="right")
+        ttk.Button(frow, text="Use default",
+                   command=self._ra_default_folder).pack(side="right", padx=(0, 6))
+        self._ra_folderlbl = ttk.Label(frow, style="Dim.TLabel",
+                                       text=self._ra_folder_text())
+        self._ra_folderlbl.pack(side="left", padx=(6, 6))
+
+        self._ra_voice_id = self.cfg.get("tts_voice_id", "") or ""
+        self._ra_voices = []
+        self._ra_busy = False
+
+        krow = ttk.Frame(f); krow.pack(fill="x", pady=(2, 2))
+        ttk.Label(krow, text="ElevenLabs API key:").pack(side="left")
+        self._ra_key = tk.StringVar(value=self.cfg.get("elevenlabs_api_key", ""))
+        ttk.Entry(krow, textvariable=self._ra_key, show="\u2022").pack(
+            side="left", fill="x", expand=True, padx=(8, 8), ipady=2)
+        _ks = ttk.Button(krow, text="Save key", command=self._ra_save_key)
+        _ks.pack(side="left")
+        helptip.tip(_ks, "Store your ElevenLabs key (kept in Windows Credential "
+                    "Manager) and load your voices.")
+
+        vrow = ttk.Frame(f); vrow.pack(fill="x", pady=(6, 2))
+        ttk.Label(vrow, text="Voice:").pack(side="left")
+        self._ra_voice = tk.StringVar(value="(add key, then Load voices)")
+        self._ra_menu = ttk.OptionMenu(vrow, self._ra_voice,
+                                       "(add key, then Load voices)")
+        self._ra_menu.configure(width=24)
+        self._ra_menu.pack(side="left", padx=(6, 6))
+        _lv = ttk.Button(vrow, text="Load voices", command=self._ra_load_voices)
+        _lv.pack(side="left")
+        helptip.tip(_lv, "Fetch the voices on your ElevenLabs account.")
+
+        drow = ttk.Frame(f); drow.pack(fill="x", pady=(8, 0))
+        _od = ttk.Button(drow, text="\U0001f4c4 Load a document\u2026",
+                         command=self._ra_open_doc)
+        _od.pack(side="left")
+        helptip.tip(_od, "Pull the text out of a .txt, .md, .docx or .pdf into "
+                    "the box, so you can convert it to audio.")
+        _conv = ttk.Button(drow, text="\U0001f399 Convert to audio",
+                           style="Accent.TButton", command=self._ra_do_play)
+        _conv.pack(side="left", padx=(8, 0))
+        helptip.tip(_conv, "Turn the text into audio. Then use the player to "
+                    "listen, or Save as MP3.")
+
+        _trow = ttk.Frame(f); _trow.pack(fill="x", pady=(8, 0))
+        ttk.Label(_trow, text="Text to convert to audio:").pack(side="left")
+        self._ra_charlbl = ttk.Label(_trow, style="Dim.TLabel", text="0 characters")
+        self._ra_charlbl.pack(side="right")
+        self._ra_box = theme.dark_text(f, wrap="word", height=10)
+        self._ra_box.pack(fill="both", expand=True, pady=(2, 6))
+        self._ra_box.bind("<KeyRelease>", lambda e: (self._ra_count(), self._ra_player.invalidate()))
+
+        prow = ttk.Frame(f); prow.pack(fill="x", pady=(0, 4))
+        self._ra_player = player.AudioPlayer(prow, self.win)
+        self._ra_player.pack(fill="x")
+        helptip.tip(self._ra_player.play_btn, "Play/pause the converted audio. "
+                    "Drag the bar to scrub; replays are free.")
+        arow = ttk.Frame(f); arow.pack(fill="x", pady=(2, 4))
+        _save = ttk.Button(arow, text="Save as MP3\u2026", command=self._ra_do_save)
+        _save.pack(side="left")
+        helptip.tip(_save, "Generate the audio and save it as an MP3 file.")
+        _open = ttk.Button(arow, text="Open folder", command=self._ra_open_folder)
+        _open.pack(side="left", padx=8)
+        helptip.tip(_open, "Open your EchoQuill\\Narration folder.")
+        _clear = ttk.Button(arow, text="Clear", command=self._ra_clear)
+        _clear.pack(side="left")
+        helptip.tip(_clear, "Clear the text box.")
+        _phone = ttk.Button(arow, text="\U0001f4f1 Listen on my phone",
+                            command=self._ra_listen_phone)
+        _phone.pack(side="left", padx=(12, 0))
+        helptip.tip(_phone, "Show a QR code to open your narrations on your "
+                    "phone over WiFi - no accounts, no cloud.")
+        self._ra_status = ttk.Label(arow, text="", style="Dim.TLabel")
+        self._ra_status.pack(side="left", padx=12)
+
+        if self.cfg.get("elevenlabs_api_key"):
+            self._ra_load_voices()
+
+    # ----- Read aloud handlers -----
+
+    def _ra_set(self, msg):
+        try:
+            self.win.after(0, lambda: self._ra_status.configure(text=msg))
+        except Exception:
+            pass
+
+    def _ra_error(self, where, e):
+        from . import tts
+        tts.log_error(where, e)
+        msg = str(e)
+        self._ra_set(msg)
+        self.win.after(0, lambda: messagebox.showerror(
+            "Read aloud", msg + "\n\n(Details saved to tts_error.log in your "
+            "EchoQuill settings folder.)"))
+
+    def _ra_open_folder(self):
+        import os
+        from .media_gui import narration_dir
+        try:
+            os.startfile(narration_dir(self.cfg))
+        except Exception:
+            self._ra_set("Could not open folder")
+
+    def _ra_listen_phone(self):
+        from . import phone_share
+        phone_share.open_phone_window(self.win, self.cfg)
+
+    def _ra_folder_text(self):
+        from .media_gui import narration_dir
+        p = narration_dir(self.cfg)
+        return p if len(p) <= 46 else "\u2026" + p[-45:]
+
+    def _ra_choose_folder(self):
+        from tkinter import filedialog
+        d = filedialog.askdirectory(
+            parent=self.win, title="Choose a folder to save narrations in "
+            "(e.g. your OneDrive / Google Drive / Dropbox folder)")
+        if not d:
+            return
+        self.cfg["narration_dir"] = d
+        try:
+            cfgmod.save(self.cfg)
+        except Exception:
+            pass
+        self._ra_folderlbl.configure(text=self._ra_folder_text())
+        self._ra_set("Narrations now save to your chosen folder \u2713")
+
+    def _ra_default_folder(self):
+        self.cfg["narration_dir"] = ""
+        try:
+            cfgmod.save(self.cfg)
+        except Exception:
+            pass
+        self._ra_folderlbl.configure(text=self._ra_folder_text())
+        self._ra_set("Back to the default Narration folder")
+
+    def _ra_clear(self):
+        self._ra_box.delete("1.0", "end")
+        self._ra_status.configure(text="")
+        self._ra_count()
+        try:
+            self._ra_player.invalidate()
+        except Exception:
+            pass
+
+    def _ra_count(self):
+        try:
+            n = len(self._ra_box.get("1.0", "end").strip())
+            self._ra_charlbl.configure(text=f"{n:,} characters")
+        except Exception:
+            pass
+
+    def _ra_confirm_cost(self, n):
+        if n <= 5000:
+            return True
+        return messagebox.askyesno(
+            "Read aloud - heads up",
+            f"This is {n:,} characters, which will use about {n:,} ElevenLabs "
+            f"credits (ElevenLabs bills per character).\n\nGenerate anyway?",
+            parent=self.win)
+
+    def _ra_save_key(self):
+        self.cfg["elevenlabs_api_key"] = self._ra_key.get().strip()
+        try:
+            cfgmod.save(self.cfg)
+        except Exception:
+            pass
+        self._ra_set("Key saved \u2713")
+        self._ra_load_voices()
+
+    def _ra_open_doc(self):
+        import threading
+        from tkinter import filedialog
+        from . import tts
+        path = filedialog.askopenfilename(
+            parent=self.win, title="Open a document to read",
+            filetypes=[("Documents", "*.txt *.md *.docx *.pdf"),
+                       ("All files", "*.*")])
+        if not path:
+            return
+        self._ra_set("Reading document\u2026")
+
+        def run():
+            import os
+            try:
+                text = tts.read_document(path)
+            except Exception as e:
+                self._ra_set(str(e)); return
+
+            def show():
+                self._ra_box.delete("1.0", "end")
+                self._ra_box.insert("1.0", text)
+                self._ra_count()
+                try:
+                    self._ra_player.invalidate()
+                except Exception:
+                    pass
+                self._ra_status.configure(text=f"Loaded {os.path.basename(path)} \u2713")
+            self.win.after(0, show)
+        threading.Thread(target=run, daemon=True).start()
+
+    def _ra_load_voices(self):
+        import threading
+        from . import tts
+        self.cfg["elevenlabs_api_key"] = self._ra_key.get().strip()
+        if not self.cfg["elevenlabs_api_key"]:
+            self._ra_set("Add your ElevenLabs API key first."); return
+        self._ra_set("Loading voices\u2026")
+
+        def run():
+            try:
+                voices = tts.list_voices(self.cfg)
+            except Exception as e:
+                self._ra_set(str(e)); return
+            self.win.after(0, lambda: self._ra_fill_voices(voices))
+        threading.Thread(target=run, daemon=True).start()
+
+    def _ra_fill_voices(self, voices):
+        self._ra_voices = voices
+        menu = self._ra_menu["menu"]
+        menu.delete(0, "end")
+        if not voices:
+            self._ra_voice.set("(no voices found)")
+            self._ra_set("No voices on this account."); return
+        for name, vid in voices:
+            menu.add_command(label=name,
+                             command=lambda n=name, i=vid: self._ra_pick(n, i))
+        cur = next((n for n, i in voices if i == self._ra_voice_id), None)
+        if cur:
+            self._ra_voice.set(cur)
+        else:
+            self._ra_pick(voices[0][0], voices[0][1])
+        self._ra_set(f"Loaded {len(voices)} voice"
+                     f"{'s' if len(voices) != 1 else ''} \u2713")
+
+    def _ra_pick(self, name, vid):
+        self._ra_voice.set(name)
+        self._ra_voice_id = vid
+        self.cfg["tts_voice_id"] = vid
+
+    def _ra_guard(self):
+        if self._ra_busy:
+            self._ra_set("Still working on the last one\u2026"); return False
+        if not self._ra_key.get().strip():
+            self._ra_set("Add your ElevenLabs API key first."); return False
+        text = self._ra_box.get("1.0", "end").strip()
+        if not text:
+            self._ra_set("Nothing to read - paste or open some text."); return False
+        if not self._ra_confirm_cost(len(text)):
+            self._ra_set("Cancelled."); return False
+        self.cfg["elevenlabs_api_key"] = self._ra_key.get().strip()
+        return True
+
+    def _ra_do_play(self):
+        import threading, os, tempfile
+        from . import tts
+        if not self._ra_guard():
+            return
+        text = self._ra_box.get("1.0", "end").strip()
+        self._ra_busy = True
+        self._ra_set("Generating audio\u2026")
+
+        def run():
+            try:
+                pcm = tts.synth_pcm(text, self.cfg, self._ra_voice_id,
+                                    status_cb=self._ra_set)
+                fd, wav = tempfile.mkstemp(prefix="eq_ras_", suffix=".wav")
+                os.close(fd)
+                tts.pcm_to_wav(pcm, wav)
+
+                def go():
+                    self._ra_player.load_and_play(wav)
+                    self._ra_set("Playing \u25b6")
+                self.win.after(0, go)
+            except Exception as e:
+                self._ra_error("play", e)
+            finally:
+                self._ra_busy = False
+        threading.Thread(target=run, daemon=True).start()
+
+    def _ra_do_save(self):
+        import threading, os
+        from tkinter import filedialog
+        from . import tts
+        from .media_gui import narration_dir
+        if not self._ra_guard():
+            return
+        text = self._ra_box.get("1.0", "end").strip()
+        path = filedialog.asksaveasfilename(
+            parent=self.win, title="Save narration as MP3",
+            initialdir=narration_dir(self.cfg), defaultextension=".mp3",
+            filetypes=[("MP3 audio", "*.mp3")])
+        if not path:
+            return
+        self._ra_busy = True
+        self._ra_set("Generating audio\u2026")
+
+        def run():
+            try:
+                tts.synthesize_to_mp3(text, self.cfg, self._ra_voice_id, path,
+                                      status_cb=self._ra_set)
+                self._ra_set(f"Saved \u2713  {os.path.basename(path)}")
+            except Exception as e:
+                self._ra_error("save", e)
+            finally:
+                self._ra_busy = False
+        threading.Thread(target=run, daemon=True).start()
+
+    def _build_whatsnew(self, f):
+        from . import changelog
+        ttk.Label(f, text="What\u2019s New", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, style="Dim.TLabel", wraplength=560, text=(
+            "Every update to EchoQuill, newest first \u2014 Pro and Free."
+            )).pack(anchor="w", pady=(2, 8))
+        box = theme.dark_text(f, wrap="word")
+        box.pack(fill="both", expand=True, pady=(2, 6))
+        box.insert("1.0", changelog.TEXT)
+        box.configure(state="disabled")
 
     def _build_clipboard(self, f):
         self._title(f, "Clipboard",
@@ -660,7 +1003,31 @@ class SettingsWindow:
             "• Drag the tray by its header to park it anywhere.\n"
             "• Search box: type a word to highlight the clips containing it.\n"
             "• ✕ deletes a clip; Settings → History clears everything.\n"
-            "• Every dictation is also on the Windows clipboard: Ctrl+V works immediately."),
+            "• Every dictation is also on the Windows clipboard: Ctrl+V works immediately.\n"
+            "• RECENT TRANSCRIPTIONS (Settings → History) works the same way: DRAG a "
+            "line onto any text box to drop it, or CLICK to paste into your last app."),
+        "Meeting / Record": (
+            "RECORD & TRANSCRIBE WHAT YOU HEAR\n\n"
+            "1. Settings → Meeting, or right-click the mic pill → Meeting / Record.\n"
+            "2. (Optional) tick 'record my microphone' for two-way calls, and/or "
+            "'capture the screen' to also save an MP4 video.\n"
+            "3. Name it, click Start recording. Play your call / webinar / video.\n"
+            "4. Click Stop & transcribe - it runs locally, no link or URL needed.\n\n"
+            "Great for Skool, Zoom, Teams, webinars, or any playing video.\n"
+            "Everything saves to Documents\\EchoQuill\\Meetings."),
+        "Read aloud & phone": (
+            "TURN TEXT INTO SPOKEN AUDIO (TEXT-TO-SPEECH)\n\n"
+            "1. Settings → Read aloud, or right-click the mic pill → Read aloud.\n"
+            "2. Paste text, or click 'Load a document' (.txt/.md/.docx/.pdf).\n"
+            "3. Add your ElevenLabs API key once (Save key → Load voices) and pick "
+            "a voice.\n"
+            "4. Click 'Convert to audio'. Then Play/pause/scrub on the timeline, or "
+            "'Save as MP3'. Audio is generated once - replays are free.\n\n"
+            "SAVE ANYWHERE: 'Save narrations to...' can point at a OneDrive / Google "
+            "Drive / Dropbox folder so files sync automatically.\n\n"
+            "LISTEN ON YOUR PHONE: click 'Listen on my phone' for a QR code. On a "
+            "phone on the SAME WiFi, scan it to open a page of your narrations - tap "
+            "to play or download. No accounts, no cloud; it stays on your network."),
     }
 
     def _build_help(self, f):

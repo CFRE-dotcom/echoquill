@@ -16,3 +16,7 @@ keyring>=25.0
 pywin32-ctypes>=0.2.0 ; sys_platform == 'win32'
 soundcard>=0.4.2 ; sys_platform == 'win32'
 imageio-ffmpeg>=0.5.1
+# Read aloud: document text extraction + QR
+python-docx>=1.1.0
+pypdf>=4.0
+qrcode>=7.4

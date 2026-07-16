@@ -81,8 +81,35 @@ def apply(win) -> ttk.Style:
     win.option_add("*TCombobox*Listbox.background", FIELD)
     win.option_add("*TCombobox*Listbox.foreground", FG)
     win.option_add("*TCombobox*Listbox.selectBackground", ACCENT)
-    style.configure("Vertical.TScrollbar", background=FIELD, troughcolor=BG,
-                    bordercolor=BG, arrowcolor=DIM)
+    # One clean, always-visible scrollbar app-wide: no arrow buttons (one piece),
+    # a medium-gray thumb that auto-sizes to the content (responsive) and shows
+    # the accent colour while you drag it. Visible on both light and dark.
+    def _is_light(hexcol):
+        try:
+            r = int(hexcol[1:3], 16); g = int(hexcol[3:5], 16); b = int(hexcol[5:7], 16)
+            return (0.299 * r + 0.587 * g + 0.114 * b) > 150
+        except Exception:
+            return False
+    _light = _is_light(BG)
+    _thumb = "#8e8e93" if _light else "#6d6d72"
+    _trough = "#e5e5ea" if _light else "#242426"
+    for _o in ("Vertical", "Horizontal"):
+        _stick = "ns" if _o == "Vertical" else "we"
+        try:
+            style.layout(f"{_o}.TScrollbar", [
+                (f"{_o}.Scrollbar.trough", {"sticky": "nswe", "children": [
+                    (f"{_o}.Scrollbar.thumb",
+                     {"expand": "1", "sticky": "nswe"})]})])
+        except Exception:
+            pass
+    style.configure("Vertical.TScrollbar", troughcolor=_trough, background=_thumb,
+                    bordercolor=_trough, lightcolor=_thumb, darkcolor=_thumb,
+                    arrowcolor=_thumb, relief="flat", width=13)
+    style.configure("Horizontal.TScrollbar", troughcolor=_trough, background=_thumb,
+                    bordercolor=_trough, lightcolor=_thumb, darkcolor=_thumb,
+                    arrowcolor=_thumb, relief="flat")
+    for _o in ("Vertical.TScrollbar", "Horizontal.TScrollbar"):
+        style.map(_o, background=[("pressed", ACCENT), ("active", ACCENT)])
     _install_context_menus(win)
     return style
 
@@ -103,6 +130,25 @@ class Scrollable(ttk.Frame):
         self.canvas.configure(yscrollcommand=vsb.set)
         self.canvas.pack(side="left", fill="both", expand=True)
         vsb.pack(side="right", fill="y")
+        # auto-hide: only show the scrollbar when the content actually overflows
+        self._vsb = vsb
+        self._vsb_shown = True
+
+        def _autohide(_e=None):
+            try:
+                need = self.inner.winfo_reqheight() > self.canvas.winfo_height() + 1
+            except Exception:
+                return
+            if need and not self._vsb_shown:
+                vsb.pack(side="right", fill="y")
+                self._vsb_shown = True
+            elif not need and self._vsb_shown:
+                vsb.pack_forget()
+                self._vsb_shown = False
+        self._autohide = _autohide
+        self.inner.bind("<Configure>", lambda e: (self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")), _autohide()), add="+")
+        self.canvas.bind("<Configure>", lambda e: _autohide(), add="+")
         self.canvas.bind("<Enter>", lambda e: self.canvas.bind_all(
             "<MouseWheel>", self._wheel))
         self.canvas.bind("<Leave>", lambda e: self.canvas.unbind_all("<MouseWheel>"))
@@ -208,7 +254,11 @@ def _install_context_menus(win):
                 pass
             clip_paste(w)
 
-        m = tk.Menu(win, tearoff=0, bg=FIELD, fg=FG,
+        try:
+            _parent = w.winfo_toplevel()
+        except Exception:
+            _parent = w
+        m = tk.Menu(_parent, tearoff=0, bg=FIELD, fg=FG,
                     activebackground=ACCENT, activeforeground="#ffffff", bd=0)
         m.add_command(label="Cut", command=_cut,
                       state=("normal" if has_sel else "disabled"))

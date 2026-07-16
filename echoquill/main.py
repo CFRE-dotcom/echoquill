@@ -58,6 +58,7 @@ class App:
             on_command=lambda: self.events.put("toggle_command"),
             on_help=lambda: self.events.put("help"),
             on_meeting=lambda: self.events.put("meeting"),
+            on_read_aloud=lambda: self.events.put("read_aloud"),
             level_provider=lambda: (self.recorder.level if self.recorder else 0.0),
         )
 
@@ -166,6 +167,7 @@ class App:
                 pystray.MenuItem("Voice command", lambda: self.events.put("toggle_command")),
                 pystray.MenuItem("Settings…", lambda: self.events.put("settings")),
                 pystray.MenuItem("Meeting / Record", lambda: self.events.put("meeting")),
+                pystray.MenuItem("Read aloud (Text-to-speech)", lambda: self.events.put("read_aloud")),
                 pystray.MenuItem("Today's stats", lambda: self.events.put("stats")),
                 pystray.MenuItem("Help", lambda: self.events.put("help")),
                 pystray.MenuItem("Quit", lambda: self.events.put("quit")),
@@ -178,68 +180,99 @@ class App:
     # ---------- event loop ----------
 
     def run(self):
+        try:
+            self.root.report_callback_exception = \
+                lambda exc, val, tb: self._log_crash("tk-callback", val)
+        except Exception:
+            pass
         self.root.after(50, self._poll)
         self.root.mainloop()
+
+    def _log_crash(self, where, exc):
+        try:
+            import datetime, traceback
+            from .config import app_data_dir
+            with open(app_data_dir() / "crash.log", "a", encoding="utf-8") as f:
+                f.write(f"\n===== {datetime.datetime.now():%Y-%m-%d %H:%M:%S} "
+                        f"[{where}] =====\n")
+                if isinstance(exc, BaseException):
+                    f.write("".join(traceback.format_exception(
+                        type(exc), exc, exc.__traceback__)))
+                else:
+                    f.write(str(exc) + "\n")
+        except Exception:
+            pass
 
     def _poll(self):
         try:
             while True:
                 ev = self.events.get_nowait()
-                if ev == "toggle":
-                    self._toggle()
-                elif ev == "cancel":
-                    self._cancel_dictation()
-                elif ev == "toggle_command":
-                    self._toggle(mode="command")
-                elif ev == "toggle_write":
-                    self._toggle(mode="write")
-                elif ev == "hold_press":
-                    if not (self.recorder and self.recorder.recording) and not self._busy:
-                        self._begin()
-                elif ev == "hold_release":
-                    if self.recorder and self.recorder.recording and not self._busy:
-                        self._busy = True
-                        self._overlay_update("busy")
-                        threading.Thread(target=self._finish, daemon=True).start()
-                elif ev == "settings":
-                    self._open_settings()
-                elif ev == "stats":
-                    self._open_settings(section="Stats")
-                elif ev == "help":
-                    self._open_settings(section="Help")
-                elif ev == "meeting":
-                    self._open_settings(section="Meeting")
-                elif ev == "open_update":
-                    self._update_badge.hide()
-                    self._open_settings(section="About")
-                elif isinstance(ev, tuple) and ev[0] == "update_available":
-                    # show it INSIDE the app (Settings window), not a floating badge
-                    self._pending_update = ev[1]
-                    win = getattr(self, "_settings_win", None)
-                    try:
-                        if win is not None and win.win.winfo_exists():
-                            win._show_update_banner(ev[1])
-                    except Exception:
-                        pass
-                elif ev == "history":
-                    self._open_history()
-                elif ev == "clips":
-                    from .clips_gui import ClipsTray
-                    ClipsTray.toggle(self.root)
-                elif ev == "media":
-                    from .media_gui import MediaWindow
-                    MediaWindow(self.root, self.transcriber, self.cfg)
-                elif ev == "quit":
-                    self._quit()
-                    return
-                elif ev == "restart":
-                    self._restart()
-                    return
-                elif isinstance(ev, tuple) and ev[0] == "overlay":
-                    self._overlay_update(ev[1], ev[2] if len(ev) > 2 else "")
+                try:
+                    if self._dispatch(ev):
+                        return
+                except Exception as _e:
+                    self._log_crash(f"event {ev!r}", _e)
         except queue.Empty:
             pass
         self.root.after(50, self._poll)
+
+    def _dispatch(self, ev):
+        """Handle one event. Returns True only for quit/restart."""
+        if ev == "toggle":
+            self._toggle()
+        elif ev == "cancel":
+            self._cancel_dictation()
+        elif ev == "toggle_command":
+            self._toggle(mode="command")
+        elif ev == "toggle_write":
+            self._toggle(mode="write")
+        elif ev == "hold_press":
+            if not (self.recorder and self.recorder.recording) and not self._busy:
+                self._begin()
+        elif ev == "hold_release":
+            if self.recorder and self.recorder.recording and not self._busy:
+                self._busy = True
+                self._overlay_update("busy")
+                threading.Thread(target=self._finish, daemon=True).start()
+        elif ev == "settings":
+            self._open_settings()
+        elif ev == "stats":
+            self._open_settings(section="Stats")
+        elif ev == "help":
+            self._open_settings(section="Help")
+        elif ev == "meeting":
+            self._open_settings(section="Meeting")
+        elif ev == "read_aloud":
+            from .tts_gui import ReadAloudWindow
+            ReadAloudWindow(self.root, self.cfg)
+        elif ev == "open_update":
+            self._update_badge.hide()
+            self._open_settings(section="About")
+        elif isinstance(ev, tuple) and ev[0] == "update_available":
+            self._pending_update = ev[1]
+            win = getattr(self, "_settings_win", None)
+            try:
+                if win is not None and win.win.winfo_exists():
+                    win._show_update_banner(ev[1])
+            except Exception:
+                pass
+        elif ev == "history":
+            self._open_history()
+        elif ev == "clips":
+            from .clips_gui import ClipsTray
+            ClipsTray.toggle(self.root)
+        elif ev == "media":
+            from .media_gui import MediaWindow
+            MediaWindow(self.root, self.transcriber, self.cfg)
+        elif ev == "quit":
+            self._quit()
+            return True
+        elif ev == "restart":
+            self._restart()
+            return True
+        elif isinstance(ev, tuple) and ev[0] == "overlay":
+            self._overlay_update(ev[1], ev[2] if len(ev) > 2 else "")
+        return False
 
     def _overlay_update(self, state: str, text: str = ""):
         if not self.cfg.get("overlay_enabled", True):
