@@ -394,11 +394,10 @@ class SettingsWindow:
         ttk.Label(frow, text="Save narrations to:").pack(side="left")
         ttk.Button(frow, text="Change\u2026",
                    command=self._ra_choose_folder).pack(side="right")
-        ttk.Button(frow, text="Use default",
-                   command=self._ra_default_folder).pack(side="right", padx=(0, 6))
-        self._ra_folderlbl = ttk.Label(frow, style="Dim.TLabel",
-                                       text=self._ra_folder_text())
-        self._ra_folderlbl.pack(side="left", padx=(6, 6))
+        self._ra_folder_ent = ttk.Entry(frow)
+        self._ra_folder_ent.pack(side="left", fill="x", expand=True,
+                                 padx=(8, 8), ipady=2)
+        self._ra_set_folder_entry()
 
         self._ra_voice_id = self.cfg.get("tts_voice_id", "") or ""
         self._ra_voices = []
@@ -500,10 +499,12 @@ class SettingsWindow:
         from . import phone_share
         phone_share.open_phone_window(self.win, self.cfg)
 
-    def _ra_folder_text(self):
+    def _ra_set_folder_entry(self):
         from .media_gui import narration_dir
-        p = narration_dir(self.cfg)
-        return p if len(p) <= 46 else "\u2026" + p[-45:]
+        self._ra_folder_ent.configure(state="normal")
+        self._ra_folder_ent.delete(0, "end")
+        self._ra_folder_ent.insert(0, narration_dir(self.cfg))
+        self._ra_folder_ent.configure(state="readonly")
 
     def _ra_choose_folder(self):
         from tkinter import filedialog
@@ -517,7 +518,7 @@ class SettingsWindow:
             cfgmod.save(self.cfg)
         except Exception:
             pass
-        self._ra_folderlbl.configure(text=self._ra_folder_text())
+        self._ra_set_folder_entry()
         self._ra_set("Narrations now save to your chosen folder \u2713")
 
     def _ra_default_folder(self):
@@ -526,7 +527,7 @@ class SettingsWindow:
             cfgmod.save(self.cfg)
         except Exception:
             pass
-        self._ra_folderlbl.configure(text=self._ra_folder_text())
+        self._ra_set_folder_entry()
         self._ra_set("Back to the default Narration folder")
 
     def _ra_clear(self):

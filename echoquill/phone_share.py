@@ -18,16 +18,44 @@ mimetypes.add_type("audio/mpeg", ".mp3")
 AUDIO_EXT = (".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac")
 
 
-def lan_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def local_ips():
+    """All this PC's IPv4 addresses, best LAN guess first. A VPN can add an
+    address your phone can't reach, so we rank real home-LAN ranges first and
+    let the user pick if the default doesn't work."""
+    ips = set()
     try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = "127.0.0.1"
-    finally:
+        ips.add(s.getsockname()[0])
         s.close()
-    return ip
+    except Exception:
+        pass
+    try:
+        for res in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ips.add(res[4][0])
+    except Exception:
+        pass
+    cand = [ip for ip in ips
+            if not ip.startswith("127.") and not ip.startswith("169.254.")]
+
+    def rank(ip):
+        if ip.startswith("192.168."):
+            return 0
+        if ip.startswith("10."):
+            return 1
+        if ip.startswith("172."):
+            try:
+                o = int(ip.split(".")[1])
+                if 16 <= o <= 31:
+                    return 2
+            except Exception:
+                pass
+        return 3
+    return sorted(set(cand), key=rank) or ["127.0.0.1"]
+
+
+def lan_ip():
+    return local_ips()[0]
 
 
 def _make_handler(folder, token):
@@ -143,8 +171,11 @@ class PhoneShare:
                                        daemon=True)
         self.thread.start()
 
+    def url_for(self, ip):
+        return f"http://{ip}:{self.port}/{self.token}/"
+
     def url(self):
-        return f"http://{lan_ip()}:{self.port}/{self.token}/"
+        return self.url_for(lan_ip())
 
     def stop(self):
         try:
@@ -156,7 +187,9 @@ class PhoneShare:
 
 
 def open_phone_window(parent, cfg):
-    """Start the share and pop a window with a QR code + link."""
+    """Start the share and pop a window with a QR code + link. Includes an IP
+    picker in case a VPN/virtual adapter provides an address the phone can't
+    reach."""
     import tkinter as tk
     from tkinter import ttk, messagebox
     from . import theme
@@ -166,15 +199,17 @@ def open_phone_window(parent, cfg):
     share = PhoneShare(folder)
     try:
         share.start()
-        url = share.url()
     except Exception as e:
         messagebox.showerror("Listen on my phone",
                              f"Could not start sharing: {e}", parent=parent)
         return
 
+    ips = local_ips()
+    state = {"ip": ips[0]}
+
     win = tk.Toplevel(parent)
     win.title("Listen on my phone")
-    win.geometry("380x520")
+    win.geometry("400x560")
     win.resizable(False, False)
     win.attributes("-topmost", True)
     theme.apply(win)
@@ -186,46 +221,69 @@ def open_phone_window(parent, cfg):
 
     ttk.Label(win, text="Listen on my phone", style="Title.TLabel").pack(
         anchor="w", padx=18, pady=(14, 2))
-    ttk.Label(win, style="Dim.TLabel", wraplength=340, text=(
-        "On your phone (connected to the SAME WiFi), scan this with the camera "
-        "- or type the link below into the phone's browser. Tap a file to play "
-        "or download it. Nothing leaves your network.")).pack(
-        anchor="w", padx=18)
+    ttk.Label(win, style="Dim.TLabel", wraplength=360, text=(
+        "On your phone (SAME WiFi), scan this with the camera - or type the "
+        "link below into the phone's browser. Tap a file to play or download. "
+        "Nothing leaves your network.")).pack(anchor="w", padx=18)
 
     holder = tk.Label(win, bg=theme.PANEL)
-    holder.pack(pady=12)
-    try:
-        import qrcode
-        from PIL import ImageTk
-        img = qrcode.make(url).resize((240, 240))
-        photo = ImageTk.PhotoImage(img)
-        holder.configure(image=photo)
-        holder.image = photo
-    except Exception:
-        holder.configure(text="(QR unavailable - use the link below)",
-                         fg=theme.FG)
-
+    holder.pack(pady=10)
     urow = ttk.Frame(win)
     urow.pack(fill="x", padx=18)
     ent = ttk.Entry(urow)
-    ent.insert(0, url)
-    ent.configure(state="readonly")
     ent.pack(side="left", fill="x", expand=True, ipady=3)
+
+    def _refresh():
+        url = share.url_for(state["ip"])
+        ent.configure(state="normal")
+        ent.delete(0, "end"); ent.insert(0, url)
+        ent.configure(state="readonly")
+        try:
+            import qrcode
+            from PIL import ImageTk
+            img = qrcode.make(url).resize((240, 240))
+            photo = ImageTk.PhotoImage(img)
+            holder.configure(image=photo)
+            holder.image = photo
+        except Exception:
+            holder.configure(text="(QR unavailable - use the link below)",
+                             fg=theme.FG)
 
     def _copy():
         try:
             import pyperclip
-            pyperclip.copy(url)
+            pyperclip.copy(share.url_for(state["ip"]))
             _status.configure(text="Link copied ✓")
         except Exception:
             _status.configure(text="Copy failed")
     ttk.Button(urow, text="Copy link", command=_copy).pack(side="left", padx=(8, 0))
 
+    if len(ips) > 1:
+        prow = ttk.Frame(win)
+        prow.pack(fill="x", padx=18, pady=(8, 0))
+        ttk.Label(prow, text="If it won't load, try another address:",
+                  style="Dim.TLabel").pack(side="left")
+        ipvar = tk.StringVar(value=ips[0])
+
+        def _pick(v):
+            state["ip"] = v
+            _refresh()
+        ttk.OptionMenu(prow, ipvar, ips[0], *ips,
+                       command=_pick).pack(side="left", padx=(6, 0))
+
     _status = ttk.Label(win, text="", style="Dim.TLabel")
     _status.pack(anchor="w", padx=18, pady=(4, 0))
-    ttk.Label(win, style="Dim.TLabel", wraplength=340, text=(
-        "Keep this window open while you listen. Close it to stop sharing. "
-        "(Windows may ask once to allow EchoQuill through the firewall - say "
-        "yes for Private networks.)")).pack(anchor="w", padx=18, pady=(8, 0))
+    ttk.Label(win, style="Dim.TLabel", wraplength=360, text=(
+        "Not loading? Two usual causes:\n"
+        "- Firewall: the first time, Windows should ask to allow EchoQuill - "
+        "say YES for Private networks. If you missed it, allow python/EchoQuill "
+        "in Windows Defender Firewall (Private).\n"
+        "- VPN: if you're on a VPN, your phone can't reach the VPN address - "
+        "use the picker above to choose a 192.168.x address, or turn the VPN "
+        "off briefly.\n\n"
+        "Keep this window open while you listen; close it to stop sharing."
+        )).pack(anchor="w", padx=18, pady=(8, 0))
     ttk.Button(win, text="Stop sharing", command=_close).pack(pady=12)
+
+    _refresh()
     return win

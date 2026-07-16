@@ -48,7 +48,8 @@ def _tooltip(widget, text):
     widget.bind("<Leave>", hide)
 
 
-def open_editor(parent, text, on_save, cfg=None, title="Edit", anchor=None):
+def open_editor(parent, text, on_save, cfg=None, title="Edit", anchor=None,
+                on_delete=None):
     dlg = tk.Toplevel(parent)
     dlg.title(title)
     dlg.configure(bg=theme.PANEL)
@@ -88,6 +89,17 @@ def open_editor(parent, text, on_save, cfg=None, title="Edit", anchor=None):
               activebackground="#3396ff", activeforeground="#ffffff",
               borderwidth=0, padx=20, pady=6, cursor="hand2",
               font=("Segoe UI Semibold", 10)).pack(side="right")
+    if on_delete is not None:
+        def _delete():
+            try:
+                on_delete()
+            except Exception:
+                pass
+            dlg.destroy()
+        tk.Button(bar, text="Delete", command=_delete, bg=theme.FIELD,
+                  fg="#ff6b6b", activebackground=theme.SIDEBAR,
+                  activeforeground="#ff6b6b", borderwidth=0, padx=16, pady=6,
+                  cursor="hand2", font=("Segoe UI", 10)).pack(side="right", padx=(0, 8))
     tk.Button(bar, text="Cancel", command=dlg.destroy, bg=theme.FIELD,
               fg=theme.FG, activebackground=theme.SIDEBAR, activeforeground=theme.FG,
               borderwidth=0, padx=16, pady=6, cursor="hand2",

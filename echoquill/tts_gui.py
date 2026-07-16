@@ -89,15 +89,15 @@ class ReadAloudWindow:
         helptip.tip(_ks, "Store your ElevenLabs API key (kept in Windows "
                     "Credential Manager) and load your voices.")
 
-        frow = ttk.Frame(self.win); frow.pack(fill="x", padx=18, pady=(6, 0))
+        frow = ttk.Frame(self.win); frow.pack(fill="x", padx=18, pady=(6, 2))
         ttk.Label(frow, text="Save narrations to:").pack(side="left")
-        ttk.Button(frow, text="Change\u2026",
-                   command=self._choose_folder).pack(side="right")
-        ttk.Button(frow, text="Use default",
-                   command=self._default_folder).pack(side="right", padx=(0, 6))
-        self.folder_lbl = ttk.Label(frow, style="Dim.TLabel",
-                                    text=self._folder_text())
-        self.folder_lbl.pack(side="left", padx=(6, 6))
+        _fch = ttk.Button(frow, text="Change\u2026", command=self._choose_folder)
+        _fch.pack(side="right")
+        helptip.tip(_fch, "Choose where narrations save - e.g. a OneDrive / "
+                    "Google Drive / Dropbox folder so they sync to your phone.")
+        self.folder_ent = ttk.Entry(frow)
+        self.folder_ent.pack(side="left", fill="x", expand=True, padx=(8, 8), ipady=2)
+        self._set_folder_entry()
 
         # ---- voice + open-document row ----
         vrow = ttk.Frame(self.win)
@@ -158,9 +158,11 @@ class ReadAloudWindow:
         from . import phone_share
         phone_share.open_phone_window(self.win, self.cfg)
 
-    def _folder_text(self):
-        p = narration_dir(self.cfg)
-        return p if len(p) <= 46 else "\u2026" + p[-45:]
+    def _set_folder_entry(self):
+        self.folder_ent.configure(state="normal")
+        self.folder_ent.delete(0, "end")
+        self.folder_ent.insert(0, narration_dir(self.cfg))
+        self.folder_ent.configure(state="readonly")
 
     def _choose_folder(self):
         d = filedialog.askdirectory(
@@ -174,7 +176,7 @@ class ReadAloudWindow:
             _cfg.save(self.cfg)
         except Exception:
             pass
-        self.folder_lbl.configure(text=self._folder_text())
+        self._set_folder_entry()
         self._set_status("Narrations now save to your chosen folder ✓")
 
     def _default_folder(self):
@@ -184,7 +186,7 @@ class ReadAloudWindow:
             _cfg.save(self.cfg)
         except Exception:
             pass
-        self.folder_lbl.configure(text=self._folder_text())
+        self._set_folder_entry()
         self._set_status("Back to the default Narration folder")
 
     def _clear(self):

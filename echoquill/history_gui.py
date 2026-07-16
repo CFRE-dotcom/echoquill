@@ -390,8 +390,18 @@ class ClipboardWindow:
             history.update(ts, new_text)
             self.refresh()
             self._flash("Saved ✓")
+
+        def _del():
+            try:
+                history.delete(ts)
+                favorites.remove(text)
+            except Exception:
+                pass
+            self.refresh()
+            self._flash("Deleted")
         edit_dialog.open_editor(self.win, text, _save, cfg=None,
-                                title="Edit transcription", anchor=self.win)
+                                title="Edit transcription", anchor=self.win,
+                                on_delete=_del)
 
     def _delete_one(self, ts):
         history.delete(ts)
