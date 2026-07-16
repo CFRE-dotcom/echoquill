@@ -91,7 +91,7 @@ def apply(win) -> ttk.Style:
         except Exception:
             return False
     _light = _is_light(BG)
-    _thumb = "#8e8e93" if _light else "#6d6d72"
+    _thumb = ACCENT
     _trough = "#e5e5ea" if _light else "#242426"
     for _o in ("Vertical", "Horizontal"):
         _stick = "ns" if _o == "Vertical" else "we"

@@ -155,7 +155,10 @@ class Overlay:
         m.add_separator()
         if self.on_quit:
             m.add_command(label="Quit EchoQuill", command=self.on_quit)
-        m.tk_popup(e.x_root, e.y_root)
+        try:
+            m.tk_popup(e.x_root, e.y_root)
+        finally:
+            m.grab_release()
         return "break"
 
     def _place(self, w, h):

@@ -158,7 +158,7 @@ def _make_handler(folder, token):
 class PhoneShare:
     def __init__(self, folder):
         self.folder = folder
-        self.token = secrets.token_urlsafe(6)
+        self.token = secrets.token_urlsafe(16)
         self.httpd = None
         self.thread = None
         self.port = None
