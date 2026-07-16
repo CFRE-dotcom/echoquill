@@ -70,27 +70,56 @@ class SettingsWindow:
         navwrap.pack(side="top", fill="both", expand=True)
         self._navcanvas = tk.Canvas(navwrap, bg=theme.SIDEBAR,
                                     highlightthickness=0, width=180)
-        _navsb = ttk.Scrollbar(navwrap, orient="vertical",
-                               command=self._navcanvas.yview,
-                               style="Sidebar.Vertical.TScrollbar")
         self._navinner = tk.Frame(self._navcanvas, bg=theme.SIDEBAR)
         _nid = self._navcanvas.create_window((0, 0), window=self._navinner,
                                              anchor="nw")
         self._navmore = tk.Label(navwrap, text="\u25be", bg=theme.SIDEBAR,
                                  fg=theme.ACCENT, font=("Segoe UI", 13, "bold"))
 
-        def _nav_scroll(lo, hi):
-            _navsb.set(lo, hi)
+        # small, always-visible blue scrollbar - a fixed ~40px thumb we draw
+        # ourselves so it never balloons to full height when little scrolls.
+        _SBW, _TH = 8, 40
+        _sb = tk.Canvas(navwrap, width=_SBW, bg=theme.SIDEBAR,
+                        highlightthickness=0, bd=0)
+        _sb.pack(side="right", fill="y")
+        _thumb = _sb.create_rectangle(1, 0, _SBW - 1, _TH,
+                                      fill=theme.ACCENT, outline="")
+        _st = {"lo": 0.0, "hi": 1.0}
+
+        def _place_thumb():
             try:
-                if float(hi) < 0.999:                 # more below -> show the cue
+                h = _sb.winfo_height()
+                th = min(_TH, max(16, h - 4))
+                rng = 1.0 - (_st["hi"] - _st["lo"])
+                f = (_st["lo"] / rng) if rng > 1e-6 else 0.0
+                top = f * max(0, h - th)
+                _sb.coords(_thumb, 1, top, _SBW - 1, top + th)
+            except Exception:
+                pass
+
+        def _nav_scroll(lo, hi):
+            _st["lo"], _st["hi"] = float(lo), float(hi)
+            _place_thumb()
+            try:
+                if float(hi) < 0.999:
                     self._navmore.place(relx=0.5, rely=1.0, anchor="s")
                     self._navmore.lift()
                 else:
                     self._navmore.place_forget()
             except Exception:
                 pass
+
+        def _sb_drag(e):
+            h = _sb.winfo_height()
+            th = min(_TH, max(16, h - 4))
+            f = max(0.0, min(1.0, (e.y - th / 2) / max(1, h - th)))
+            rng = 1.0 - (_st["hi"] - _st["lo"])
+            self._navcanvas.yview_moveto(f * rng)
+        _sb.bind("<Button-1>", _sb_drag)
+        _sb.bind("<B1-Motion>", _sb_drag)
+        _sb.bind("<Configure>", lambda e: _place_thumb())
+
         self._navcanvas.configure(yscrollcommand=_nav_scroll)
-        _navsb.pack(side="right", fill="y")          # ALWAYS-visible blue bar
         self._navcanvas.pack(side="left", fill="both", expand=True)
 
         def _nav_cfg(_e=None):
