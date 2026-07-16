@@ -78,10 +78,12 @@ def manage_dialog(parent, cfg, on_change=lambda: None):
             lb.insert("end", "  (mine)  " + q)
     reload()
 
+    ttk.Label(dlg, style="Dim.TLabel",
+              text="Add a new question (Ctrl+Enter or the Add button):").pack(
+              anchor="w", padx=14, pady=(4, 0))
     row = ttk.Frame(dlg); row.pack(fill="x", padx=14, pady=(0, 6))
-    var = tk.StringVar()
-    ent = ttk.Entry(row, textvariable=var)
-    ent.pack(side="left", fill="x", expand=True, ipady=3)
+    ent = theme.dark_text(row, wrap="word", height=3)
+    ent.pack(side="left", fill="x", expand=True)
 
     def _mine():
         sel = lb.curselection()
@@ -91,16 +93,41 @@ def manage_dialog(parent, cfg, on_change=lambda: None):
         return label.split("(mine)", 1)[1].strip() if "(mine)" in label else None
 
     def add():
-        add_prompt(cfg, var.get()); var.set(""); reload(); on_change()
-    ent.bind("<Return>", lambda e: add())
+        t = ent.get("1.0", "end").strip()
+        if t:
+            add_prompt(cfg, t); ent.delete("1.0", "end"); reload(); on_change()
+    ent.bind("<Control-Return>", lambda e: (add(), "break")[1])
     ttk.Button(row, text="Add", command=add).pack(side="left", padx=(6, 0))
+
+    def _ask_block(title, initial=""):
+        d = tk.Toplevel(dlg); d.title(title); d.attributes("-topmost", True)
+        d.geometry("540x300"); d.resizable(True, True); theme.apply(d)
+        ttk.Label(d, style="Dim.TLabel",
+                  text="Edit the question, then Save:").pack(
+                  anchor="w", padx=14, pady=(12, 4))
+        box = theme.dark_text(d, wrap="word", height=8)
+        box.pack(fill="both", expand=True, padx=14, pady=(0, 8))
+        box.insert("1.0", initial); box.focus_set()
+        res = {"v": None}
+        bar = ttk.Frame(d); bar.pack(fill="x", padx=14, pady=(0, 12))
+        def _ok():
+            res["v"] = box.get("1.0", "end").strip(); d.destroy()
+        ttk.Button(bar, text="Save", style="Accent.TButton",
+                   command=_ok).pack(side="right")
+        ttk.Button(bar, text="Cancel", command=d.destroy).pack(
+            side="right", padx=8)
+        try:
+            d.grab_set()
+        except Exception:
+            pass
+        dlg.wait_window(d)
+        return res["v"]
 
     def edit():
         q = _mine()
         if not q:
             messagebox.showinfo("Edit", "Pick one of YOUR presets (defaults are locked).", parent=dlg); return
-        new = simpledialog.askstring("Edit preset", "Rewrite the question:",
-                                     initialvalue=q, parent=dlg)
+        new = _ask_block("Edit preset", q)
         if new and new.strip():
             remove_prompt(cfg, q); add_prompt(cfg, new.strip()); reload(); on_change()
 
