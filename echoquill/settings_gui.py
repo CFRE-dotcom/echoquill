@@ -76,7 +76,20 @@ class SettingsWindow:
         self._navinner = tk.Frame(self._navcanvas, bg=theme.SIDEBAR)
         _nid = self._navcanvas.create_window((0, 0), window=self._navinner,
                                              anchor="nw")
-        self._navcanvas.configure(yscrollcommand=_navsb.set)
+        self._navmore = tk.Label(navwrap, text="\u25be", bg=theme.SIDEBAR,
+                                 fg=theme.ACCENT, font=("Segoe UI", 13, "bold"))
+
+        def _nav_scroll(lo, hi):
+            _navsb.set(lo, hi)
+            try:
+                if float(hi) < 0.999:                 # more below -> show the cue
+                    self._navmore.place(relx=0.5, rely=1.0, anchor="s")
+                    self._navmore.lift()
+                else:
+                    self._navmore.place_forget()
+            except Exception:
+                pass
+        self._navcanvas.configure(yscrollcommand=_nav_scroll)
         self._navcanvas.pack(side="left", fill="both", expand=True)
 
         def _nav_cfg(_e=None):
