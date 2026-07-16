@@ -90,17 +90,12 @@ class SettingsWindow:
             except Exception:
                 pass
         self._navcanvas.configure(yscrollcommand=_nav_scroll)
+        _navsb.pack(side="right", fill="y")          # ALWAYS-visible blue bar
         self._navcanvas.pack(side="left", fill="both", expand=True)
 
         def _nav_cfg(_e=None):
             try:
                 self._navcanvas.configure(scrollregion=self._navcanvas.bbox("all"))
-                need = (self._navinner.winfo_reqheight()
-                        > self._navcanvas.winfo_height() + 1)
-                if need and not _navsb.winfo_ismapped():
-                    _navsb.pack(side="right", fill="y")
-                elif not need and _navsb.winfo_ismapped():
-                    _navsb.pack_forget()
             except Exception:
                 pass
         self._navinner.bind("<Configure>", _nav_cfg)
