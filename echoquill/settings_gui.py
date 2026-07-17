@@ -871,8 +871,14 @@ class SettingsWindow:
         r = self._row(f, "Model")
         self.ai_model_var = tk.StringVar(value=self.cfg["ai_model"])
         self.ai_model_box = ttk.Combobox(r, textvariable=self.ai_model_var,
-                                         width=42)   # editable: type any model
+                                         width=30)   # editable: type any model
         self.ai_model_box.pack(side="left")
+        ttk.Button(r, text="↻ Refresh",
+                   command=self._ai_refresh_models).pack(side="left", padx=(6, 0))
+        ttk.Button(r, text="Test",
+                   command=self._ai_test).pack(side="left", padx=(6, 0))
+        self.ai_test_status = ttk.Label(f, style="Dim.TLabel", wraplength=460)
+        self.ai_test_status.pack(anchor="w")
 
         r = self._row(f, "Sign-in method")
         self.ai_auth_var = tk.StringVar(
@@ -1726,6 +1732,87 @@ class SettingsWindow:
         import webbrowser
         webbrowser.open(self.cfg.get("upgrade_url",
                         "https://github.com/CFRE-dotcom/echoquill#echoquill-pro"))
+
+    def _cur_ai_cfg(self):
+        """A cfg snapshot from the live AI fields, so Test/Refresh use what's
+        on screen right now (not only what was last saved)."""
+        c = dict(self.cfg)
+        c["ai_provider"] = self.ai_provider_var.get()
+        c["ai_model"] = self.ai_model_var.get().strip()
+        c["ai_base_url"] = self.ai_url_var.get().strip()
+        c["ai_api_key"] = self.ai_key_var.get().strip()
+        c["ai_auth_method"] = self.ai_auth_var.get()
+        return c
+
+    def _ai_set_test(self, msg):
+        try:
+            self.win.after(0, lambda: self.ai_test_status.configure(text=msg))
+        except Exception:
+            pass
+
+    def _ai_test(self):
+        import threading
+        self._ai_set_test("Testing\u2026")
+        cfg = self._cur_ai_cfg()
+
+        def run():
+            from . import ai_call, config as _c
+            prov = _c.AI_PROVIDERS.get(cfg["ai_provider"], {})
+            if prov.get("backend") == "codex_cli":
+                from . import codex_cli
+                ok, note = codex_cli.status()
+                if not ok:
+                    self._ai_set_test("Codex: " + note[:140]); return
+            ok, out = ai_call.chat(cfg, "You are a connection test.",
+                                   "Reply with exactly: OK", timeout=60)
+            if ok:
+                self._ai_set_test("Works \u2713  —  " + out.strip()[:50])
+            else:
+                self._ai_set_test("Failed: " + str(out)[:160])
+        threading.Thread(target=run, daemon=True).start()
+
+    def _ai_refresh_models(self):
+        import threading
+        self._ai_set_test("Loading models\u2026")
+        cfg = self._cur_ai_cfg()
+
+        def run():
+            from . import config as _c
+            prov = _c.AI_PROVIDERS.get(cfg["ai_provider"], {})
+            if prov.get("backend") == "codex_cli":
+                ms = prov.get("models", [])
+                self.win.after(0, lambda: (
+                    self.ai_model_box.configure(values=ms),
+                    self._ai_set_test(f"{len(ms)} subscription models ↓")))
+                return
+            base = (cfg.get("ai_base_url", "") or "").rstrip("/")
+            if not base:
+                self._ai_set_test("Set a base URL first."); return
+            key = cfg.get("ai_api_key", "").strip()
+            if cfg.get("ai_auth_method") == "oauth":
+                try:
+                    from . import oauth
+                    key = oauth.get_access_token(cfg, save_cb=_c.save)
+                except Exception:
+                    pass
+            try:
+                import requests
+                r = requests.get(base + "/models",
+                                 headers={"Authorization": f"Bearer {key}"},
+                                 timeout=30)
+                r.raise_for_status()
+                data = r.json()
+                items = data.get("data") or data.get("models") or []
+                ids = sorted({m.get("id") for m in items if m.get("id")})
+                if ids:
+                    self.win.after(0, lambda: (
+                        self.ai_model_box.configure(values=ids),
+                        self._ai_set_test(f"{len(ids)} models loaded ↓")))
+                else:
+                    self._ai_set_test("Provider returned no model list.")
+            except Exception as e:
+                self._ai_set_test("Couldn't load models: " + str(e)[:110])
+        threading.Thread(target=run, daemon=True).start()
 
     def _oauth_sign_in(self):
         import threading

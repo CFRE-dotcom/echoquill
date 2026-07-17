@@ -51,6 +51,27 @@ PREVIEW_IDS = {v: k for k, v in PREVIEW_LABELS.items()}
 # AI Enhancement providers. All use the same OpenAI-compatible chat API.
 # Model lists are starting points - the model box stays editable for new ones.
 AI_PROVIDERS = {
+    "OpenAI Codex (subscription)": {
+        "backend": "codex_cli",
+        "base_url": "",
+        "models": ["gpt-5.5", "gpt-5.5-codex", "gpt-5.4", "gpt-5.4-mini"],
+        "default_model": "gpt-5.5",
+        "key_hint": "Uses your ChatGPT subscription via the local Codex CLI - "
+                    "install Codex and run 'codex login' once. No API key. "
+                    "Runs on THIS PC only. Click Test to check the connection.",
+        "needs_key": False,
+    },
+    "OpenRouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "models": ["openai/gpt-5.5", "anthropic/claude-sonnet-5",
+                   "google/gemini-2.5-pro",
+                   "meta-llama/llama-3.3-70b-instruct",
+                   "deepseek/deepseek-chat"],
+        "default_model": "openai/gpt-5.5",
+        "key_hint": "One key, hundreds of models. Key from openrouter.ai/keys. "
+                    "Click Refresh to pull the live model list.",
+        "needs_key": True,
+    },
     "Anthropic (Claude)": {
         "oauth_auth_url": "", "oauth_token_url": "",
         "base_url": "https://api.anthropic.com/v1",

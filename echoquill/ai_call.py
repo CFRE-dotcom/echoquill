@@ -18,6 +18,13 @@ def _bearer(cfg: dict) -> str:
 def chat(cfg: dict, system: str, user: str, temperature: float = 0.3,
          timeout: int = 180):
     """Returns (ok, text). text is the reply on success, else an error note."""
+    from .config import AI_PROVIDERS, api_model as _am
+    _prov = AI_PROVIDERS.get(cfg.get("ai_provider", ""), {})
+    if _prov.get("backend") == "codex_cli":
+        from . import codex_cli
+        return codex_cli.chat(system, user,
+                              model=_am(cfg.get("ai_model", "gpt-5.5")) or "gpt-5.5",
+                              timeout=max(timeout, 180))
     import requests
     base = (cfg.get("ai_base_url", "") or "").rstrip("/")
     if not base:

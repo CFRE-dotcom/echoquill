@@ -273,6 +273,9 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.25.0  (2026-07-16)
+    AI providers leveled up. (1) New "OpenAI Codex (subscription)" provider - use GPT-5.5 on your ChatGPT plan with NO API key, through the local Codex CLI (install Codex and run "codex login" once; this PC only). (2) OpenRouter added - one key, hundreds of models. (3) "Refresh" button pulls the provider's live model list into the dropdown. (4) "Test" button fires one tiny call and shows a check or the exact error, for any provider.
+
 v1.24.2  (2026-07-16)
     Save dialogs now default to the correct folder. Transcript "Save as .txt" opens in your Transcriptions folder, pre-filled with the title; Export defaults to your EchoQuill folder. Verified every "Open folder" button opens its own folder.
 
