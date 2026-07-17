@@ -273,6 +273,9 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.24.2  (2026-07-16)
+    Save dialogs now default to the correct folder. Transcript "Save as .txt" opens in your Transcriptions folder, pre-filled with the title; Export defaults to your EchoQuill folder. Verified every "Open folder" button opens its own folder.
+
 v1.23.0  (2026-07-16)
     PARITY with Pro - brings Free up to date. NEW: Read aloud (Text-to-speech) with the audio player, Save-to-folder, and 'Listen on my phone' (QR over local WiFi). Reliability: crash-proof event loop + crash.log; copy/paste + right-click menu fix. UX: app-wide clean auto-hiding scrollbars (no more double/pointless bars); Recent transcriptions drag/click like the Clips tray. Help updated (Meeting, Read aloud & phone); new 'What's New' changelog section + CHANGELOG.md.
 

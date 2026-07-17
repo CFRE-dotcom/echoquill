@@ -1782,8 +1782,10 @@ class SettingsWindow:
     def _export_all(self):
         from tkinter import filedialog
         import zipfile, os
+        from .media_gui import base_dir
         path = filedialog.asksaveasfilename(
             parent=self.win, defaultextension=".zip",
+            initialdir=base_dir(self.cfg),
             initialfile="echoquill-export.zip", filetypes=[("Zip", "*.zip")])
         if not path:
             return
@@ -1804,8 +1806,10 @@ class SettingsWindow:
     def _export_audio(self):
         from tkinter import filedialog
         from . import audio_store
+        from .media_gui import base_dir
         path = filedialog.asksaveasfilename(
             parent=self.win, defaultextension=".zip",
+            initialdir=base_dir(self.cfg),
             initialfile="echoquill-audio.zip", filetypes=[("Zip", "*.zip")])
         if path and audio_store.export_zip(path):
             messagebox.showinfo("Audio", "Audio exported ✓", parent=self.win)

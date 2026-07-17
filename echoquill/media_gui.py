@@ -511,6 +511,9 @@ class MediaWindow:
 
     def _save(self):
         path = filedialog.asksaveasfilename(parent=self.win, defaultextension=".txt",
+                                            initialdir=transcripts_dir(self.cfg),
+                                            initialfile=safe_filename(
+                                                getattr(self, "_last_title", "") or "transcript"),
                                             filetypes=[("Text", "*.txt")])
         if path:
             with open(path, "w", encoding="utf-8") as f:
