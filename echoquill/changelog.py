@@ -273,6 +273,14 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.26.0  (2026-08-13)
+    Massive reliability + UI update, bringing Free up to date with the shared engine improvements.
+    - DOWNLOADS ARE FAR MORE ROBUST: audio and video downloads now resume the .part on a drop, retry hard (20x + fragment retries), transfer in 10 MB chunks, and use a 60s socket timeout - so a flaky connection or SSL blip no longer kills a download. Orphaned .part files are cleaned up.
+    - Better video saves: mp4-first format chain plus the bundled ffmpeg, which fixes many "Requested format is not available" cases and reliably merges video+audio.
+    - SETTINGS now uses real native tabs (grouped: General, Dictation, Transcription, AI, Meeting, Read aloud, Activity, Help) instead of the old left sidebar - more room, cleaner.
+    - NEW "Transcript source" option in the transcriber: keep Whisper (accurate, default) or switch to "YouTube captions (fast)" to pull a video's existing captions with no download; it falls back to Whisper if the video has none.
+
+
 v1.25.0  (2026-07-16)
     AI providers leveled up. (1) New "OpenAI Codex (subscription)" provider - use GPT-5.5 on your ChatGPT plan with NO API key, through the local Codex CLI (install Codex and run "codex login" once; this PC only). (2) OpenRouter added - one key, hundreds of models. (3) "Refresh" button pulls the provider's live model list into the dropdown. (4) "Test" button fires one tiny call and shows a check or the exact error, for any provider.
 

@@ -99,6 +99,9 @@ def fetch_audio_info(url: str, status_cb, cfg=None):
         "format": "bestaudio/best",
         "outtmpl": os.path.join(tmpdir, "audio.%(ext)s"),
         "quiet": True, "no_warnings": True, "noplaylist": True,
+        "continuedl": True,
+        "retries": 20, "fragment_retries": 20, "file_access_retries": 10,
+        "socket_timeout": 60, "http_chunk_size": 10485760,
     }
     low = (url or "").lower()
     if "skool.com" in low or ".m3u8" in low:
@@ -149,7 +152,10 @@ def _unique_path(p: str) -> str:
 
 def _media_opts(url, cfg, tmpl, fmt):
     opts = {"format": fmt, "outtmpl": tmpl,
-            "quiet": True, "no_warnings": True, "noplaylist": True}
+            "quiet": True, "no_warnings": True, "noplaylist": True,
+            "continuedl": True,
+            "retries": 20, "fragment_retries": 20, "file_access_retries": 10,
+            "socket_timeout": 60, "http_chunk_size": 10485760}
     low = (url or "").lower()
     if "skool.com" in low or ".m3u8" in low:
         opts["http_headers"] = {"Referer": "https://www.skool.com/",
@@ -166,6 +172,100 @@ def _media_opts(url, cfg, tmpl, fmt):
     return opts
 
 
+def _parse_vtt(raw):
+    """Turn a WebVTT caption file into (segments, plain_text)."""
+    import re
+
+    def to_sec(t):
+        try:
+            parts = [float(x) for x in t.strip().split(":")]
+        except Exception:
+            return 0.0
+        while len(parts) < 3:
+            parts.insert(0, 0.0)
+        return parts[-3] * 3600 + parts[-2] * 60 + parts[-1]
+
+    segs, out, cur = [], [], None
+    for ln in (raw or "").splitlines():
+        m = re.match(r"\s*([\d:.]+)\s*-->", ln)
+        if m:
+            cur = to_sec(m.group(1))
+            continue
+        t = ln.strip()
+        if (not t or t == "WEBVTT" or t.startswith("Kind:")
+                or t.startswith("Language:") or t.startswith("NOTE")
+                or t.isdigit()):
+            continue
+        t = re.sub(r"<[^>]+>", "", t).replace("&nbsp;", " ").replace("&amp;", "&")
+        t = t.strip()
+        if not t or (out and out[-1] == t):
+            continue
+        out.append(t)
+        if cur is not None:
+            segs.append((cur, t))
+    text = re.sub(r"\s{2,}", " ", " ".join(out)).strip()
+    return segs, text
+
+
+def fetch_captions(url, cfg, langs=("en", "en-US", "en-GB", "en-orig")):
+    """Pull a video's existing captions as (segments, text, title). Fast, no
+    media download. Returns (None, None, title) if there are no captions."""
+    import yt_dlp
+    import tempfile
+    import glob
+    tmp = tempfile.mkdtemp(prefix="eqcap_")
+    opts = {"skip_download": True, "writesubtitles": True,
+            "writeautomaticsub": True, "subtitleslangs": list(langs),
+            "subtitlesformat": "vtt", "quiet": True, "no_warnings": True,
+            "outtmpl": os.path.join(tmp, "%(id)s.%(ext)s")}
+    low = (url or "").lower()
+    if "skool.com" in low or ".m3u8" in low:
+        opts["http_headers"] = {"Referer": "https://www.skool.com/",
+                                "Origin": "https://www.skool.com"}
+    cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
+    br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
+    if cf and os.path.exists(cf):
+        opts["cookiefile"] = cf
+    elif br:
+        try:
+            opts["cookiesfrombrowser"] = (br,)
+        except Exception:
+            pass
+    title = ""
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+        title = (info or {}).get("title") or ""
+        vtts = glob.glob(os.path.join(tmp, "*.vtt"))
+        if not vtts:
+            return (None, None, title)
+        vtts.sort(key=lambda f: (0 if ".en" in os.path.basename(f).lower()
+                                 else 1))
+        with open(vtts[0], encoding="utf-8", errors="ignore") as fh:
+            segs, text = _parse_vtt(fh.read())
+        return (segs, text, title) if text else (None, None, title)
+    except Exception:
+        return (None, None, title)
+
+
+def cleanup_parts(dest_dir, name):
+    """Remove orphaned partial-download files (.part/.ytdl) for <name>."""
+    import glob
+    try:
+        base = _safe_stem(name or "")
+        if not base:
+            return
+        for fpath in glob.glob(os.path.join(dest_dir, glob.escape(base) + "*")):
+            low = fpath.lower()
+            if low.endswith(".part") or low.endswith(".ytdl") or ".part-frag" in low:
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
 def download_video(url, cfg, dest_dir, status_cb=lambda s: None, name=None) -> str:
     """Download the FULL video (not just audio) into dest_dir. Returns title.
 
@@ -177,8 +277,15 @@ def download_video(url, cfg, dest_dir, status_cb=lambda s: None, name=None) -> s
         tmpl = os.path.join(dest_dir, _safe_stem(name) + ".%(ext)s")
     else:
         tmpl = os.path.join(dest_dir, "%(title).120B.%(ext)s")
-    opts = _media_opts(url, cfg, tmpl, "best/bv*+ba/b")
+    opts = _media_opts(
+        url, cfg, tmpl,
+        "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b/best")
     opts["merge_output_format"] = "mp4"
+    try:
+        import imageio_ffmpeg
+        opts["ffmpeg_location"] = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        pass
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
     return (info or {}).get("title") or "video"
@@ -299,6 +406,18 @@ class MediaWindow:
                          "audio/video) saves under it - no re-saving. Leave "
                          "blank to use the video's own title. Handy for Skool "
                          "videos, which have no title.")
+        trow = ttk.Frame(self.win)
+        trow.pack(fill="x", padx=18, pady=(4, 0))
+        ttk.Label(trow, text="Transcript source:").pack(side="left")
+        self.tmode_var = tk.StringVar(value="Whisper (accurate)")
+        _tm = ttk.OptionMenu(trow, self.tmode_var, "Whisper (accurate)",
+                             "Whisper (accurate)", "YouTube captions (fast)")
+        _tm.pack(side="left", padx=(6, 0))
+        helptip.tip(_tm, "Whisper: our local speech-to-text - most accurate, "
+                    "works on any site. YouTube captions: pulls the video's "
+                    "existing captions instead (fast, no download); falls back "
+                    "to Whisper if a video has none.")
+
         keeprow = ttk.Frame(self.win)
         keeprow.pack(fill="x", padx=18, pady=(4, 0))
         self.keep_audio_var = tk.BooleanVar(value=False)
@@ -373,8 +492,28 @@ class MediaWindow:
         path = None
         try:
             self.win.after(0, lambda: self.out.delete("1.0", "end"))
+            cap_text = None
+            cap_segs = None
             if is_url:
-                path, title = fetch_audio_info(source, self._set_status, self.cfg)
+                use_caps = str(getattr(self, "tmode_var", None)
+                               and self.tmode_var.get() or "").lower().startswith(
+                    "youtube")
+                if use_caps:
+                    self._set_status("Fetching captions…")
+                    cap_segs, cap_text, cap_title = fetch_captions(
+                        source, self.cfg)
+                if cap_text:
+                    title = cap_title or "video"
+                    path = None
+                    if self.keep_audio_var.get() or self.keep_video_var.get():
+                        path, _atitle = fetch_audio_info(
+                            source, self._set_status, self.cfg)
+                else:
+                    if use_caps:
+                        self._append("[No captions found — using Whisper "
+                                     "instead]\n\n")
+                    path, title = fetch_audio_info(
+                        source, self._set_status, self.cfg)
             else:
                 path = source
                 title = os.path.splitext(os.path.basename(source))[0]
@@ -408,25 +547,37 @@ class MediaWindow:
                     except Exception as _ae:
                         self._append(f"[Could not save audio: {_ae}]\n\n")
 
-            self._set_status("Transcribing… (long videos take a while)")
-            eng = self._engine()
-            model = eng.load()
-            lang = self.cfg.get("language", "auto")
-            lang = None if lang in ("", "auto") else lang
             parts = []
             self._seg_map = []          # (char_start, char_end, seconds)
             pos = len(header)
             _keep_awake(True)
-            with eng._lock:
-                segments, _info = model.transcribe(path, language=lang, vad_filter=True)
-                for seg in segments:
-                    if self._cancel:
-                        break
-                    t = seg.text.strip()
-                    parts.append(t)
-                    self._seg_map.append((pos, pos + len(t) + 1, seg.start))
-                    pos += len(t) + 1
-                    self._append(t + " ")
+            if cap_text:
+                if cap_segs:
+                    for sec, t in cap_segs:
+                        parts.append(t)
+                        self._seg_map.append((pos, pos + len(t) + 1, sec))
+                        pos += len(t) + 1
+                        self._append(t + " ")
+                else:
+                    parts = [cap_text]
+                    self._append(cap_text)
+            else:
+                self._set_status("Transcribing… (long videos take a while)")
+                eng = self._engine()
+                model = eng.load()
+                lang = self.cfg.get("language", "auto")
+                lang = None if lang in ("", "auto") else lang
+                with eng._lock:
+                    segments, _info = model.transcribe(
+                        path, language=lang, vad_filter=True)
+                    for seg in segments:
+                        if self._cancel:
+                            break
+                        t = seg.text.strip()
+                        parts.append(t)
+                        self._seg_map.append((pos, pos + len(t) + 1, seg.start))
+                        pos += len(t) + 1
+                        self._append(t + " ")
             # auto-save, named after the (cleaned) video title
             folder = transcripts_dir(self.cfg)
             out = os.path.join(folder, safe_filename(title))

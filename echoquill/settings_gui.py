@@ -37,143 +37,85 @@ class SettingsWindow:
         self.win.attributes("-topmost", True)
         theme.apply(self.win)
 
-        # ----- layout: sidebar | content -----
-        self.sidebar = tk.Frame(self.win, bg=theme.SIDEBAR, width=180)
-        self.sidebar.pack(side="left", fill="y")
-        self.sidebar.pack_propagate(False)
+        # ----- layout: native tabs (grouped) -----
+        header = tk.Frame(self.win, bg=theme.PANEL)
+        header.pack(side="top", fill="x")
+        tk.Label(header, text="EchoQuill", bg=theme.PANEL, fg=theme.FG,
+                 font=("Segoe UI Semibold", 14)).pack(side="left", padx=16,
+                                                       pady=10)
+        _up = tk.Label(header, text="⭐ Upgrade to Pro  ·  $5/mo · $39/yr",
+                       bg=theme.PANEL, fg="#ffd60a",
+                       font=("Segoe UI Semibold", 10), cursor="hand2")
+        _up.pack(side="right", padx=16)
+        _up.bind("<Button-1>", lambda e: self._open_upgrade())
 
-        tk.Label(self.sidebar, text="EchoQuill", bg=theme.SIDEBAR,
-                 fg=theme.FG, font=("Segoe UI Semibold", 14)
-                 ).pack(anchor="w", padx=18, pady=(18, 14))
-
-        # everything right of the sidebar: content on top, save bar below it
-        right = ttk.Frame(self.win)
-        right.pack(side="left", fill="both", expand=True)
-        self._save_bar = ttk.Frame(right)
+        self._save_bar = ttk.Frame(self.win)
         self._save_bar.pack(side="bottom", fill="x")
-        ttk.Button(self._save_bar, text="Save changes", style="Accent.TButton",
-                   command=self._save).pack(side="right", padx=16, pady=10)
-        self.content = ttk.Frame(right)
-        self.content.pack(side="top", fill="both", expand=True)
-        # green "update available" banner (hidden until a check finds one)
-        self._update_banner = tk.Frame(right, bg="#30d158")
+        self._save_btn = ttk.Button(self._save_bar, text="Save changes",
+                                    style="Accent.TButton", command=self._save)
+        self._update_banner = tk.Frame(self.win, bg="#30d158")
 
-        up = tk.Label(self.sidebar, text="⭐ Upgrade to Pro",
-                      bg=theme.SIDEBAR, fg="#ffd60a",
-                      font=("Segoe UI Semibold", 10), cursor="hand2", pady=10)
-        up.pack(side="bottom", fill="x")
-        up.bind("<Button-1>", lambda e: self._open_upgrade())
-        tk.Label(self.sidebar, text="$5/mo · $39/yr", bg=theme.SIDEBAR,
-                 fg=theme.DIM, font=("Segoe UI", 8)).pack(side="bottom")
+        self._nb = ttk.Notebook(self.win)
+        self._nb.pack(side="top", fill="both", expand=True, padx=8, pady=(6, 0))
 
-        navwrap = tk.Frame(self.sidebar, bg=theme.SIDEBAR)
-        navwrap.pack(side="top", fill="both", expand=True)
-        self._navcanvas = tk.Canvas(navwrap, bg=theme.SIDEBAR,
-                                    highlightthickness=0, width=180)
-        self._navinner = tk.Frame(self._navcanvas, bg=theme.SIDEBAR)
-        _nid = self._navcanvas.create_window((0, 0), window=self._navinner,
-                                             anchor="nw")
-        self._navmore = tk.Label(navwrap, text="\u25be", bg=theme.SIDEBAR,
-                                 fg=theme.ACCENT, font=("Segoe UI", 13, "bold"))
-
-        # small, always-visible blue scrollbar - a fixed ~40px thumb we draw
-        # ourselves so it never balloons to full height when little scrolls.
-        _SBW, _TH = 8, 40
-        _sb = tk.Canvas(navwrap, width=_SBW, bg=theme.SIDEBAR,
-                        highlightthickness=0, bd=0)
-        _sb.pack(side="right", fill="y")
-        _thumb = _sb.create_rectangle(1, 0, _SBW - 1, _TH,
-                                      fill=theme.ACCENT, outline="")
-        _st = {"lo": 0.0, "hi": 1.0}
-
-        def _place_thumb():
-            try:
-                h = _sb.winfo_height()
-                th = min(_TH, max(16, h - 4))
-                rng = 1.0 - (_st["hi"] - _st["lo"])
-                f = (_st["lo"] / rng) if rng > 1e-6 else 0.0
-                top = f * max(0, h - th)
-                _sb.coords(_thumb, 1, top, _SBW - 1, top + th)
-            except Exception:
-                pass
-
-        def _nav_scroll(lo, hi):
-            _st["lo"], _st["hi"] = float(lo), float(hi)
-            _place_thumb()
-            try:
-                if float(hi) < 0.999:
-                    self._navmore.place(relx=0.5, rely=1.0, anchor="s")
-                    self._navmore.lift()
-                else:
-                    self._navmore.place_forget()
-            except Exception:
-                pass
-
-        def _sb_drag(e):
-            h = _sb.winfo_height()
-            th = min(_TH, max(16, h - 4))
-            f = max(0.0, min(1.0, (e.y - th / 2) / max(1, h - th)))
-            rng = 1.0 - (_st["hi"] - _st["lo"])
-            self._navcanvas.yview_moveto(f * rng)
-        _sb.bind("<Button-1>", _sb_drag)
-        _sb.bind("<B1-Motion>", _sb_drag)
-        _sb.bind("<Configure>", lambda e: _place_thumb())
-
-        self._navcanvas.configure(yscrollcommand=_nav_scroll)
-        self._navcanvas.pack(side="left", fill="both", expand=True)
-
-        def _nav_cfg(_e=None):
-            try:
-                self._navcanvas.configure(scrollregion=self._navcanvas.bbox("all"))
-            except Exception:
-                pass
-        self._navinner.bind("<Configure>", _nav_cfg)
-        self._navcanvas.bind("<Configure>", lambda e: (
-            self._navcanvas.itemconfigure(_nid, width=e.width), _nav_cfg()))
-        self._navcanvas.bind("<Enter>", lambda e: self._navcanvas.bind_all(
-            "<MouseWheel>", lambda ev: self._navcanvas.yview_scroll(
-                int(-ev.delta / 120), "units")))
-        self._navcanvas.bind("<Leave>",
-                             lambda e: self._navcanvas.unbind_all("<MouseWheel>"))
-
-        self._nav_buttons = {}
-        self._frames = {}
-        for name in self.SECTIONS:
-            b = tk.Label(self._navinner, text=name, bg=theme.SIDEBAR,
-                         fg=theme.DIM, font=("Segoe UI", 11), anchor="w",
-                         padx=18, pady=8, cursor="hand2")
-            b.pack(fill="x")
-            b.bind("<Button-1>", lambda e, n=name: self._show(n))
-            self._nav_buttons[name] = b
-
-        body = {"General": self._build_general,
-                "Dictation": self._build_dictation,
-                "Transcription": self._build_transcription,
-                "Meeting": self._build_meeting,
-                "Read aloud": self._build_read_aloud,
-                "Clipboard": self._build_clipboard,
-                "Dictionary": self._build_dictionary,
-                "AI Enhancement": self._build_ai,
-                "Stats": self._build_stats,
-                "History": self._build_history,
-                "Help": self._build_help,
-                "Feedback": self._build_feedback,
-                "About": self._build_about,
-                "What\u2019s New": self._build_whatsnew}
-        _noscroll = {"Meeting", "Read aloud", "Transcription", "History",
+        _noscroll = {"Meeting", "Read aloud", "History",
                      "Help", "Feedback", "Dictionary", "What\u2019s New"}
-        for name, builder in body.items():
+        builders = {"General": self._build_general,
+                    "Dictation": self._build_dictation,
+                    "Transcription": self._build_transcription,
+                    "Meeting": self._build_meeting,
+                    "Read aloud": self._build_read_aloud,
+                    "Clipboard": self._build_clipboard,
+                    "Dictionary": self._build_dictionary,
+                    "AI Enhancement": self._build_ai,
+                    "Stats": self._build_stats,
+                    "History": self._build_history,
+                    "Help": self._build_help,
+                    "Feedback": self._build_feedback,
+                    "About": self._build_about,
+                    "What\u2019s New": self._build_whatsnew}
+
+        def _mk(parent, name):
             if name in _noscroll:
-                fr = ttk.Frame(self.content)
-                builder(fr)
-                self._frames[name] = fr
+                fr = ttk.Frame(parent)
+                builders[name](fr)
+                return fr
+            sc = theme.Scrollable(parent)
+            builders[name](sc.inner)
+            return sc
+
+        self._groups = [
+            ("General", ["General"]),
+            ("Dictation", ["Dictation", "Dictionary", "Clipboard"]),
+            ("Transcription", ["Transcription"]),
+            ("AI", ["AI Enhancement"]),
+            ("Meeting", ["Meeting"]),
+            ("Read aloud", ["Read aloud"]),
+            ("Activity", ["Stats", "History"]),
+            ("Help", ["Help", "Feedback", "About", "What\u2019s New"]),
+        ]
+        self._section_tab = {}
+        self._group_nested = {}
+        for oi, (label, secs) in enumerate(self._groups):
+            if len(secs) == 1:
+                self._nb.add(_mk(self._nb, secs[0]), text="  %s  " % label)
+                self._section_tab[secs[0]] = (oi, None, None)
+                self._group_nested[oi] = None
             else:
-                sc = theme.Scrollable(self.content)
-                builder(sc.inner)
-                self._frames[name] = sc
+                nb2 = ttk.Notebook(self._nb)
+                for ii, sec in enumerate(secs):
+                    nb2.add(_mk(nb2, sec), text="  %s  " % sec)
+                    self._section_tab[sec] = (oi, nb2, ii)
+                nb2.bind("<<NotebookTabChanged>>",
+                         lambda e: self._update_savebar())
+                self._nb.add(nb2, text="  %s  " % label)
+                self._group_nested[oi] = nb2
+        self._nb.bind("<<NotebookTabChanged>>",
+                      lambda e: self._update_savebar())
 
         self._show(initial_section if initial_section in self.SECTIONS
                    else "General")
+        self._update_savebar()
         self._snapshot = self._collect_state()
         self.win.protocol("WM_DELETE_WINDOW", self._on_close)
         self._start_update_autocheck()
@@ -201,18 +143,42 @@ class SettingsWindow:
     # only these tabs have anything to save
     SAVE_SECTIONS = {"General", "Dictation", "Dictionary", "AI Enhancement"}
 
-    def _show(self, name):
-        if name in self.SAVE_SECTIONS:
-            self._save_bar.pack(side="bottom", fill="x")
+    def _current_section(self):
+        try:
+            oi = self._nb.index(self._nb.select())
+        except Exception:
+            return "General"
+        label, secs = self._groups[oi]
+        nb2 = self._group_nested.get(oi)
+        if nb2 is None:
+            return secs[0]
+        try:
+            ii = nb2.index(nb2.select())
+        except Exception:
+            ii = 0
+        return secs[ii]
+
+    def _update_savebar(self):
+        if self._current_section() in self.SAVE_SECTIONS:
+            self._save_btn.pack(side="right", padx=16, pady=10)
         else:
-            self._save_bar.pack_forget()
-        for n, b in self._nav_buttons.items():
-            active = (n == name)
-            b.configure(bg=theme.PANEL if active else theme.SIDEBAR,
-                        fg=theme.FG if active else theme.DIM)
-        for n, f in self._frames.items():
-            f.pack_forget()
-        self._frames[name].pack(fill="both", expand=True, padx=24, pady=18)
+            self._save_btn.pack_forget()
+
+    def _show(self, name):
+        loc = getattr(self, "_section_tab", {}).get(name)
+        if not loc:
+            return
+        oi, nb2, ii = loc
+        try:
+            self._nb.select(oi)
+        except Exception:
+            pass
+        if nb2 is not None and ii is not None:
+            try:
+                nb2.select(ii)
+            except Exception:
+                pass
+        self._update_savebar()
 
     def _title(self, parent, text, sub=""):
         ttk.Label(parent, text=text, style="Title.TLabel").pack(anchor="w")
@@ -1242,7 +1208,7 @@ class SettingsWindow:
         dismiss.pack(side="right", padx=(0, 4))
         dismiss.bind("<Button-1>", lambda e: self._update_banner.pack_forget())
         try:
-            self._update_banner.pack(side="top", fill="x", before=self.content)
+            self._update_banner.pack(side="top", fill="x", before=self._nb)
         except Exception:
             self._update_banner.pack(side="top", fill="x")
 
