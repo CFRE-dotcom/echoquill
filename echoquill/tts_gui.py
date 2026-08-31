@@ -32,8 +32,8 @@ class ReadAloudWindow:
         self.win.title("EchoQuill — Read aloud")
         self.win.geometry("640x560")
         self.win.minsize(540, 480)
-        self.win.attributes("-topmost", True)
         theme.apply(self.win)
+        theme.bring_to_front(self.win)
         self.win.protocol("WM_DELETE_WINDOW", self._close)
 
         # ---- bottom action bar first (never pushed off-screen) ----

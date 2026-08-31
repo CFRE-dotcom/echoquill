@@ -20,9 +20,9 @@ class ClipboardWindow:
         self.win.title("EchoQuill — Recent transcriptions")
         self.win.geometry("720x560")
         self.win.minsize(560, 420)
-        self.win.attributes("-topmost", True)
         self.win.protocol("WM_DELETE_WINDOW", self.win.destroy)
         theme.apply(self.win)
+        theme.bring_to_front(self.win)
 
         try:
             from . import config as _cfg

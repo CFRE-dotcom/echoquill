@@ -630,6 +630,15 @@ def main():
         except Exception:
             pass
         return
+    try:
+        from . import ytdlp_updater
+        ytdlp_updater.activate()
+        import threading as _th
+        _th.Thread(
+            target=lambda: (ytdlp_updater.ensure(), ytdlp_updater.activate()),
+            daemon=True).start()
+    except Exception:
+        pass
     App().run()
 
 

@@ -102,6 +102,7 @@ def fetch_audio_info(url: str, status_cb, cfg=None):
         "continuedl": True,
         "retries": 20, "fragment_retries": 20, "file_access_retries": 10,
         "socket_timeout": 60, "http_chunk_size": 10485760,
+        "legacy_server_connect": True,
     }
     low = (url or "").lower()
     if "skool.com" in low or ".m3u8" in low:
@@ -110,14 +111,8 @@ def fetch_audio_info(url: str, status_cb, cfg=None):
     # Optional: pull videos that require you to be logged in, using the cookies
     # from your browser (Settings > Transcription > "Sign in via browser").
     cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
-    br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
     if cf and os.path.exists(cf):
         opts["cookiefile"] = cf          # exported cookies.txt (most reliable)
-    elif br:
-        try:
-            opts["cookiesfrombrowser"] = (br,)
-        except Exception:
-            pass
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
     title = (info or {}).get("title") or "transcript"
@@ -155,20 +150,15 @@ def _media_opts(url, cfg, tmpl, fmt):
             "quiet": True, "no_warnings": True, "noplaylist": True,
             "continuedl": True,
             "retries": 20, "fragment_retries": 20, "file_access_retries": 10,
-            "socket_timeout": 60, "http_chunk_size": 10485760}
+            "socket_timeout": 60, "http_chunk_size": 10485760,
+            "legacy_server_connect": True}
     low = (url or "").lower()
     if "skool.com" in low or ".m3u8" in low:
         opts["http_headers"] = {"Referer": "https://www.skool.com/",
                                 "Origin": "https://www.skool.com"}
     cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
-    br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
     if cf and os.path.exists(cf):
         opts["cookiefile"] = cf          # exported cookies.txt (most reliable)
-    elif br:
-        try:
-            opts["cookiesfrombrowser"] = (br,)
-        except Exception:
-            pass
     return opts
 
 
@@ -223,14 +213,8 @@ def fetch_captions(url, cfg, langs=("en", "en-US", "en-GB", "en-orig")):
         opts["http_headers"] = {"Referer": "https://www.skool.com/",
                                 "Origin": "https://www.skool.com"}
     cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
-    br = ((cfg or {}).get("yt_cookies_browser", "") or "").strip().lower()
     if cf and os.path.exists(cf):
         opts["cookiefile"] = cf
-    elif br:
-        try:
-            opts["cookiesfrombrowser"] = (br,)
-        except Exception:
-            pass
     title = ""
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -341,7 +325,7 @@ class MediaWindow:
         self.win.title("EchoQuill — Transcribe video or audio")
         self.win.geometry("660x560")
         self.win.minsize(560, 480)
-        self.win.attributes("-topmost", True)
+        theme.bring_to_front(self.win)
         theme.apply(self.win)
 
         # bottom action bar FIRST so it can never be pushed off-screen
@@ -376,8 +360,11 @@ class MediaWindow:
         row = ttk.Frame(self.win)
         row.pack(fill="x", padx=18, pady=(12, 4))
         self.url_var = tk.StringVar()
-        ttk.Entry(row, textvariable=self.url_var).pack(
-            side="left", fill="x", expand=True)
+        _url_e = ttk.Entry(row, textvariable=self.url_var)
+        _url_e.pack(side="left", fill="x", expand=True)
+        helptip.tip(_url_e, "Paste a video or audio link — YouTube (incl. "
+                    "Shorts), TikTok, Vimeo, and ~1,800 sites. For Skool, paste "
+                    "the embedded or .m3u8 link.")
         _b_url = ttk.Button(row, text="Transcribe URL", style="Accent.TButton",
                    command=self._go_url); _b_url.pack(side="left", padx=(8, 0))
         helptip.tip(_b_url, "Download and transcribe the video/audio at this URL.")
@@ -439,7 +426,12 @@ class MediaWindow:
         se = ttk.Entry(keeprow, textvariable=self.search_var, width=28)
         se.pack(side="right", padx=6)
         se.bind("<KeyRelease>", lambda e: self._search())
-        ttk.Label(keeprow, text="Find in transcript:").pack(side="right")
+        helptip.tip(se, "Type a word or phrase to highlight every place it "
+                    "appears in the transcript, with timestamps.")
+        _fl = ttk.Label(keeprow, text="Find in transcript:")
+        _fl.pack(side="right")
+        helptip.tip(_fl, "Search the transcript above for a word or phrase and "
+                    "jump between matches.")
 
         self.out = theme.dark_text(self.win, wrap="word")
         self.out.pack(fill="both", expand=True, padx=18, pady=(8, 4))
@@ -684,7 +676,7 @@ class BatchWindow:
         self.win.title("EchoQuill — Batch transcription")
         self.win.geometry("660x560")
         self.win.minsize(560, 480)
-        self.win.attributes("-topmost", True)
+        theme.bring_to_front(self.win)
         theme.apply(self.win)
 
         ttk.Label(self.win, text="Batch transcription",

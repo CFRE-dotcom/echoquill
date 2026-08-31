@@ -10,6 +10,7 @@ from tkinter import ttk, messagebox, simpledialog
 from . import config as cfgmod
 from . import history as historymod
 from . import theme
+from . import helptip
 
 
 class SettingsWindow:
@@ -34,8 +35,8 @@ class SettingsWindow:
         self.win.title("EchoQuill Settings")
         self.win.geometry("880x620")
         self.win.minsize(760, 540)
-        self.win.attributes("-topmost", True)
         theme.apply(self.win)
+        theme.bring_to_front(self.win)
 
         # ----- layout: native tabs (grouped) -----
         header = tk.Frame(self.win, bg=theme.PANEL)
@@ -130,11 +131,7 @@ class SettingsWindow:
         """Actually bring the window to the front (Windows fights this)."""
         try:
             self.win.deiconify()
-            self.win.lift()
-            self.win.attributes("-topmost", True)
-            self.win.focus_force()
-            # nudge Windows' foreground lock with a quick topmost pulse
-            self.win.after(150, lambda: self.win.attributes("-topmost", True))
+            theme.bring_to_front(self.win)
         except Exception:
             pass
 
@@ -817,12 +814,22 @@ class SettingsWindow:
                     "via any OpenAI-compatible service — or a free local LLM "
                     "(Ollama, LM Studio) so nothing leaves your PC.")
         self.ai_var = tk.BooleanVar(value=self.cfg["ai_enhancement"])
-        ttk.Checkbutton(f, text="Enable AI enhancement (connect a provider below)",
-                        variable=self.ai_var).pack(anchor="w", pady=(0, 2))
+        _aien = ttk.Checkbutton(f,
+                        text="Enable AI enhancement (connect a provider below)",
+                        variable=self.ai_var)
+        _aien.pack(anchor="w", pady=(0, 2))
+        helptip.tip(_aien, "The master switch. When OFF, NO AI runs anywhere in "
+                    "EchoQuill (dictation and Ask AI all use no AI). Turn this ON "
+                    "to use any AI feature. On its own it does not slow "
+                    "dictation — that's the box below.")
         self.ai_dictation_var = tk.BooleanVar(value=self.cfg.get("ai_on_dictation", False))
-        ttk.Checkbutton(f, variable=self.ai_dictation_var,
-                        text="Format dictation with AI (off = instant plain text)"
-                        ).pack(anchor="w", pady=(0, 8))
+        _aidict = ttk.Checkbutton(f, variable=self.ai_dictation_var,
+                        text="Format dictation with AI (off = instant plain text)")
+        _aidict.pack(anchor="w", pady=(0, 8))
+        helptip.tip(_aidict, "ONLY affects everyday voice-to-text. When ON (and "
+                    "the master above is ON), every dictation is sent to the AI "
+                    "to polish before it appears — this adds a delay. Leave it "
+                    "OFF for instant plain text.")
 
         r = self._row(f, "Provider")
         providers = sorted(cfgmod.AI_PROVIDERS.keys())
@@ -1763,13 +1770,43 @@ class SettingsWindow:
                     pass
             try:
                 import requests
-                r = requests.get(base + "/models",
-                                 headers={"Authorization": f"Bearer {key}"},
-                                 timeout=30)
-                r.raise_for_status()
-                data = r.json()
-                items = data.get("data") or data.get("models") or []
-                ids = sorted({m.get("id") for m in items if m.get("id")})
+                ollama_native = base.endswith("/api") or (
+                    "ollama.com" in base and not base.endswith("/v1"))
+                if ollama_native:
+                    root = base[:-4] if base.endswith("/api") else base
+                    hdr = {"Authorization": f"Bearer {key}"} if key else {}
+                    ids, last = [], ""
+                    for url, kind in ((root + "/api/tags", "tags"),
+                                      (root + "/v1/models", "models")):
+                        try:
+                            r = requests.get(url, headers=hdr, timeout=30)
+                            r.raise_for_status()
+                            data = r.json()
+                            if kind == "tags":
+                                ids = sorted({m.get("name") for m in
+                                              (data.get("models") or [])
+                                              if m.get("name")})
+                            else:
+                                its = data.get("data") or data.get("models") or []
+                                ids = sorted({m.get("id") for m in its
+                                              if m.get("id")})
+                            if ids:
+                                break
+                        except Exception as ex:
+                            last = str(ex)
+                    if not ids and last:
+                        raise Exception(last)
+                else:
+                    if "anthropic.com" in base and key:
+                        hdr = {"x-api-key": key,
+                               "anthropic-version": "2023-06-01"}
+                    else:
+                        hdr = {"Authorization": f"Bearer {key}"}
+                    r = requests.get(base + "/models", headers=hdr, timeout=30)
+                    r.raise_for_status()
+                    data = r.json()
+                    items = data.get("data") or data.get("models") or []
+                    ids = sorted({m.get("id") for m in items if m.get("id")})
                 if ids:
                     self.win.after(0, lambda: (
                         self.ai_model_box.configure(values=ids),

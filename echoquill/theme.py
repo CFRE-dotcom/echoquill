@@ -340,3 +340,21 @@ def dark_text(parent, **kw) -> tk.Text:
     t.pack_forget = wrap.pack_forget
     t.grid_forget = wrap.grid_forget
     return t
+
+
+def bring_to_front(win, ms=500):
+    """Pop a window to the front and focus it, then RELEASE topmost so it does
+    not trap child windows behind it. Use on every Toplevel that should grab
+    focus when it opens."""
+    def _drop():
+        try:
+            win.attributes("-topmost", False)
+        except Exception:
+            pass
+    try:
+        win.lift()
+        win.attributes("-topmost", True)
+        win.focus_force()
+        win.after(ms, _drop)
+    except Exception:
+        pass
