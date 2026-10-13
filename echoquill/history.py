@@ -14,6 +14,28 @@ from .config import app_data_dir
 HISTORY_PATH = app_data_dir() / "history.jsonl"
 
 
+def _atomic_write_lines(lines):
+    """Rewrite the whole history file so a crash mid-write can't truncate it:
+    write a temp file, keep a .bak of the old good copy, then os.replace."""
+    import os
+    import shutil
+    path = str(HISTORY_PATH)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+        try:
+            f.flush()
+            os.fsync(f.fileno())
+        except Exception:
+            pass
+    try:
+        if os.path.exists(path):
+            shutil.copy2(path, path + ".bak")
+    except Exception:
+        pass
+    os.replace(tmp, path)
+
+
 def add(text: str, duration_sec: float, cfg: dict):
     if not cfg.get("history_enabled", True) or not text:
         return
@@ -37,8 +59,7 @@ def _trim(max_entries: int):
         with open(HISTORY_PATH, "r", encoding="utf-8") as f:
             lines = f.readlines()
         if len(lines) > max_entries:
-            with open(HISTORY_PATH, "w", encoding="utf-8") as f:
-                f.writelines(lines[-max_entries:])
+            _atomic_write_lines(lines[-max_entries:])
     except Exception:
         pass
 
@@ -84,8 +105,7 @@ def delete(ts) -> None:
             except Exception:
                 pass
             kept.append(line)
-        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
-            f.writelines(kept)
+        _atomic_write_lines(kept)
     except FileNotFoundError:
         pass
 
@@ -141,8 +161,7 @@ def update(ts, new_text: str) -> None:
                 out.append(json.dumps(e, ensure_ascii=False) + "\n")
             else:
                 out.append(line)
-        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
-            f.writelines(out)
+        _atomic_write_lines(out)
     except FileNotFoundError:
         pass
 
@@ -161,8 +180,7 @@ def delete_many(ts_set) -> None:
             except Exception:
                 pass
             kept.append(line)
-        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
-            f.writelines(kept)
+        _atomic_write_lines(kept)
     except FileNotFoundError:
         pass
 

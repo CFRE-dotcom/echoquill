@@ -633,9 +633,17 @@ def main():
     try:
         from . import ytdlp_updater
         ytdlp_updater.activate()
+        # Make sure a previously-installed Deno is on PATH right away so the
+        # first download can solve YouTube's JS challenge even before the
+        # background refresh finishes.
+        try:
+            ytdlp_updater._add_path(str(ytdlp_updater._deno_dir()))
+        except Exception:
+            pass
         import threading as _th
         _th.Thread(
-            target=lambda: (ytdlp_updater.ensure(), ytdlp_updater.activate()),
+            target=lambda: (ytdlp_updater.ensure(), ytdlp_updater.activate(),
+                            ytdlp_updater.ensure_deno()),
             daemon=True).start()
     except Exception:
         pass

@@ -11,7 +11,6 @@ def _bearer(cfg: dict) -> str:
 
 def ask(question: str, segments, cfg: dict, title: str = "", url: str = "") -> str:
     """segments: list of (seconds, text). Returns the answer or an error note."""
-    import requests
     base_url = (cfg.get("ai_base_url", "") or "").rstrip("/")
     if not base_url:
         return "Set up AI Enhancement first (Settings → AI Enhancement)."

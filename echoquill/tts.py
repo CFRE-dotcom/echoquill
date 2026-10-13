@@ -41,16 +41,17 @@ def log_error(where, exc):
 
 def list_voices(cfg):
     """[(name, voice_id), ...] from the user's ElevenLabs account (or [])."""
-    import requests
+    from . import nethttp
     key = _key(cfg)
     if not key:
         return []
-    r = requests.get(f"{ELEVEN_BASE}/voices",
-                     headers={"xi-api-key": key}, timeout=30)
-    if r.status_code != 200:
-        raise RuntimeError(_friendly(r))
+    try:
+        data = nethttp.get_json(f"{ELEVEN_BASE}/voices",
+                                headers={"xi-api-key": key}, timeout=30)
+    except nethttp.HttpError as e:
+        raise RuntimeError("ElevenLabs error (HTTP %s)" % e.code)
     return [(v.get("name", ""), v.get("voice_id", ""))
-            for v in r.json().get("voices", []) if v.get("voice_id")]
+            for v in data.get("voices", []) if v.get("voice_id")]
 
 
 def _chunks(text, limit=CHUNK_LIMIT):
@@ -75,7 +76,7 @@ def _chunks(text, limit=CHUNK_LIMIT):
 
 def _synth_bytes(text, cfg, voice_id, output_format):
     """Raw audio bytes for one chunk in the requested output_format."""
-    import requests
+    from . import nethttp
     body = {
         "text": text,
         "model_id": cfg.get("tts_model_id") or DEFAULT_MODEL,
@@ -85,12 +86,15 @@ def _synth_bytes(text, cfg, voice_id, output_format):
         },
     }
     url = f"{ELEVEN_BASE}/text-to-speech/{voice_id}?output_format={output_format}"
-    r = requests.post(url, headers={"xi-api-key": _key(cfg),
-                                    "content-type": "application/json"},
-                      json=body, timeout=180)
-    if r.status_code != 200:
-        raise RuntimeError(_friendly(r))
-    return r.content
+    try:
+        _code, content = nethttp.request(
+            "POST", url, json_body=body, timeout=180,
+            headers={"xi-api-key": _key(cfg),
+                     "content-type": "application/json"})
+    except nethttp.HttpError as e:
+        raise RuntimeError("ElevenLabs error (HTTP %s): %s"
+                           % (e.code, (e.body or "")[:120]))
+    return content
 
 
 def _prep(text, cfg, voice_id):

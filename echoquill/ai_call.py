@@ -25,7 +25,14 @@ def chat(cfg: dict, system: str, user: str, temperature: float = 0.3,
         return codex_cli.chat(system, user,
                               model=_am(cfg.get("ai_model", "gpt-5.5")) or "gpt-5.5",
                               timeout=max(timeout, 180))
-    import requests
+    # Use Python's BUILT-IN HTTP (urllib), NOT requests. requests rides on
+    # urllib3, which yt-dlp monkey-patches ('Urllib3PercentREOverride'); once
+    # yt-dlp runs in-process that patch breaks every requests call, which was
+    # failing the AI with "object has no attribute 'sub'". Stdlib urllib is
+    # independent of urllib3, so the AI calls can't be broken by the video
+    # engine.
+    import urllib.error
+    from . import nethttp
     base = (cfg.get("ai_base_url", "") or "").rstrip("/")
     if not base:
         return (False, "Set up AI Enhancement first (Settings > AI Enhancement).")
@@ -40,18 +47,25 @@ def chat(cfg: dict, system: str, user: str, temperature: float = 0.3,
     try:
         if native:
             root = base[:-4] if base.endswith("/api") else base
-            r = requests.post(root + "/api/chat", headers=headers,
-                              json={"model": model, "messages": messages,
-                                    "stream": False}, timeout=timeout)
-            r.raise_for_status()
-            out = ((r.json() or {}).get("message") or {}).get("content", "").strip()
+            j = nethttp.post_json(root + "/api/chat", headers=headers,
+                                  json_body={"model": model,
+                                             "messages": messages,
+                                             "stream": False}, timeout=timeout)
+            out = ((j or {}).get("message") or {}).get("content", "").strip()
         else:
-            r = requests.post(base + "/chat/completions", headers=headers,
-                              json={"model": model, "messages": messages,
-                                    "temperature": temperature,
-                                    "keep_alive": "30m"}, timeout=timeout)
-            r.raise_for_status()
-            out = r.json()["choices"][0]["message"]["content"].strip()
+            j = nethttp.post_json(base + "/chat/completions", headers=headers,
+                                  json_body={"model": model,
+                                             "messages": messages,
+                                             "temperature": temperature,
+                                             "keep_alive": "30m"},
+                                  timeout=timeout)
+            out = j["choices"][0]["message"]["content"].strip()
         return (True, out) if out else (False, "AI returned nothing.")
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", "replace")[:200]
+        except Exception:
+            body = ""
+        return (False, f"AI request failed: HTTP {e.code} {body}".strip())
     except Exception as e:
         return (False, f"AI request failed: {e}")

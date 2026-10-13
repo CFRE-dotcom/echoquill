@@ -17,11 +17,11 @@ def _ver_tuple(v: str):
 def check():
     """Returns (latest_version, installer_url) if newer than current, else None."""
     from . import __version__
-    import requests
-    r = requests.get(API_LATEST, timeout=15,
-                     headers={"Accept": "application/vnd.github+json"})
-    r.raise_for_status()
-    data = r.json()
+    from . import nethttp
+    data = nethttp.get_json(
+        API_LATEST, timeout=15,
+        headers={"Accept": "application/vnd.github+json",
+                 "User-Agent": "EchoQuill"})
     latest = data.get("tag_name", "")
     if _ver_tuple(latest) <= _ver_tuple(__version__):
         return None
@@ -40,14 +40,11 @@ def check():
 
 def download_and_run(url: str, status_cb=lambda s: None) -> bool:
     """Download the installer to temp and launch it. Returns True on launch."""
-    import requests
+    from . import nethttp
     status_cb("Downloading update…")
     path = os.path.join(tempfile.gettempdir(), os.path.basename(url))
-    with requests.get(url, stream=True, timeout=60) as r:
-        r.raise_for_status()
-        with open(path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1 << 16):
-                f.write(chunk)
+    nethttp.download(url, path, timeout=120,
+                     headers={"User-Agent": "EchoQuill"})
     status_cb("Updating…")
     import subprocess
     import sys

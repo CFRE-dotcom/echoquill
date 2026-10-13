@@ -86,12 +86,87 @@ from tkinter import ttk, filedialog
 from . import theme
 
 
+def _sanitize_path_env():
+    """Some installs put un-traversable dirs on PATH (e.g. a Cua driver's
+    bin). yt-dlp walks PATH looking for ffmpeg and crashes with WinError 448
+    the moment it hits one. Strip any PATH entry we can't list, in-process
+    only, so the search can't blow up."""
+    try:
+        parts = os.environ.get("PATH", "").split(os.pathsep)
+        good = []
+        for p in parts:
+            if not p:
+                continue
+            try:
+                if os.path.isdir(p):
+                    os.listdir(p)      # raises if un-traversable
+                good.append(p)
+            except Exception:
+                continue               # drop the bad entry
+        os.environ["PATH"] = os.pathsep.join(good)
+    except Exception:
+        pass
+
+
+def _write_netscape_copy(src: str, dst: str) -> bool:
+    """Copy a cookies.txt to dst, guaranteeing the Netscape header line so
+    yt-dlp accepts it. Returns True on success."""
+    try:
+        with open(src, "r", encoding="utf-8", errors="replace") as f:
+            data = f.read()
+        head = "# Netscape HTTP Cookie File\n"
+        if "netscape http cookie file" not in data[:200].lower():
+            data = head + data
+        with open(dst, "w", encoding="utf-8") as f:
+            f.write(data)
+        return True
+    except Exception:
+        return False
+
+
+def _ensure_cookiefile(cfg) -> str:
+    """yt-dlp OVERWRITES whatever cookiefile it is handed, which silently
+    wipes the user's export (the "my cookies keep disappearing" bug). So we
+    keep the user's chosen file as a pristine SOURCE (yt_cookies_file_src)
+    and feed yt-dlp a throwaway COPY instead. Returns the copy's path, or ""
+    if there's no usable source."""
+    if not isinstance(cfg, dict):
+        return ""
+    src = (cfg.get("yt_cookies_file_src", "") or "").strip()
+    cur = (cfg.get("yt_cookies_file", "") or "").strip()
+    try:
+        active = str(cfgmod.app_data_dir() / "yt_cookies_active.txt")
+    except Exception:
+        active = ""
+    # First run after upgrade: adopt the existing chosen file as the source,
+    # unless it's already our throwaway copy.
+    if not src and cur and cur != active:
+        src = cur
+        cfg["yt_cookies_file_src"] = src
+        try:
+            cfgmod.save(cfg)
+        except Exception:
+            pass
+    if not (src and os.path.exists(src) and active):
+        return ""
+    if _write_netscape_copy(src, active):
+        if cfg.get("yt_cookies_file") != active:
+            cfg["yt_cookies_file"] = active
+            try:
+                cfgmod.save(cfg)
+            except Exception:
+                pass
+        return active
+    return ""
+
+
 def fetch_audio_info(url: str, status_cb, cfg=None):
     """Download best-audio for a URL. Returns (path, video_title).
 
     Handles Skool: its native player streams signed HLS (.m3u8) from a CDN that
     demands a Referer header, and member-only videos need your browser login.
     """
+    _sanitize_path_env()
     import yt_dlp
     tmpdir = tempfile.mkdtemp(prefix="echoquill_")
     status_cb("Downloading audio…")
@@ -110,7 +185,7 @@ def fetch_audio_info(url: str, status_cb, cfg=None):
                                 "Origin": "https://www.skool.com"}
     # Optional: pull videos that require you to be logged in, using the cookies
     # from your browser (Settings > Transcription > "Sign in via browser").
-    cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
+    cf = _ensure_cookiefile(cfg)          # throwaway copy, never the original
     if cf and os.path.exists(cf):
         opts["cookiefile"] = cf          # exported cookies.txt (most reliable)
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -123,6 +198,32 @@ def fetch_audio_info(url: str, status_cb, cfg=None):
 
 def fetch_audio(url: str, status_cb) -> str:
     return fetch_audio_info(url, status_cb)[0]
+
+
+def _transcribe_segments(model, path, language):
+    """Silent or near-silent clips make faster-whisper's VAD raise
+    'tuple index out of range'. Try WITH the VAD filter, fall back to
+    WITHOUT it, then accept an empty result rather than crashing. We force
+    the generator into a list so any such error surfaces HERE where we can
+    recover, not mid-stream."""
+    last = None
+    for vad in (True, False):
+        try:
+            segs, _info = model.transcribe(path, language=language,
+                                           vad_filter=vad)
+            return list(segs)
+        except IndexError as e:
+            last = e
+            continue
+        except Exception as e:
+            last = e
+            if vad:
+                continue
+            raise
+    if last is not None:
+        # both VAD modes failed for a non-index reason: treat as no speech
+        return []
+    return []
 
 
 def safe_filename(title: str) -> str:
@@ -156,7 +257,7 @@ def _media_opts(url, cfg, tmpl, fmt):
     if "skool.com" in low or ".m3u8" in low:
         opts["http_headers"] = {"Referer": "https://www.skool.com/",
                                 "Origin": "https://www.skool.com"}
-    cf = ((cfg or {}).get("yt_cookies_file", "") or "").strip()
+    cf = _ensure_cookiefile(cfg)          # throwaway copy, never the original
     if cf and os.path.exists(cf):
         opts["cookiefile"] = cf          # exported cookies.txt (most reliable)
     return opts
@@ -560,8 +661,7 @@ class MediaWindow:
                 lang = self.cfg.get("language", "auto")
                 lang = None if lang in ("", "auto") else lang
                 with eng._lock:
-                    segments, _info = model.transcribe(
-                        path, language=lang, vad_filter=True)
+                    segments = _transcribe_segments(model, path, lang)
                     for seg in segments:
                         if self._cancel:
                             break
@@ -777,8 +877,7 @@ class BatchWindow:
                 self._log(f"[{i}/{len(urls)}] Transcribing: {title}")
                 model = self.transcriber.load()
                 with self.transcriber._lock:
-                    segments, _info = model.transcribe(path, language=lang,
-                                                       vad_filter=True)
+                    segments = _transcribe_segments(model, path, lang)
                     text = " ".join(seg.text.strip() for seg in segments).strip()
                 out = os.path.join(self.folder, safe_filename(title))
                 base, n = out, 2

@@ -377,7 +377,9 @@ class SettingsWindow:
         self.cookie_box.pack(fill="x", pady=(4, 4))
         try:
             import os as _os
-            _cfp = self.cfg.get("yt_cookies_file", "")
+            # Show the PRISTINE source, not the throwaway copy yt-dlp overwrites.
+            _cfp = (self.cfg.get("yt_cookies_file_src", "")
+                    or self.cfg.get("yt_cookies_file", ""))
             if _cfp and _os.path.exists(_cfp):
                 with open(_cfp, encoding="utf-8", errors="ignore") as _fh:
                     self.cookie_box.insert("1.0", _fh.read())
@@ -396,7 +398,12 @@ class SettingsWindow:
             try:
                 with open(path, "w", encoding="utf-8") as fh:
                     fh.write(txt + "\n")
-                self.cfg["yt_cookies_file"] = path; _c.save(self.cfg)
+                # Keep this as the pristine SOURCE. yt-dlp is handed a throwaway
+                # copy (see media_gui._ensure_cookiefile), so it can't overwrite
+                # and wipe what you just pasted.
+                self.cfg["yt_cookies_file_src"] = path
+                self.cfg["yt_cookies_file"] = path
+                _c.save(self.cfg)
                 self.cookie_status.configure(text="Saved \u2713")
             except Exception as e:
                 self.cookie_status.configure(text=f"Save failed: {e}")
@@ -404,7 +411,9 @@ class SettingsWindow:
         def _clear_cookies():
             from . import config as _c
             self.cookie_box.delete("1.0", "end")
-            self.cfg["yt_cookies_file"] = ""; _c.save(self.cfg)
+            self.cfg["yt_cookies_file"] = ""
+            self.cfg["yt_cookies_file_src"] = ""
+            _c.save(self.cfg)
             self.cookie_status.configure(text="Cleared")
         ttk.Button(crow2, text="Save cookies", style="Accent.TButton",
                    command=_save_cookies).pack(side="left")
@@ -1142,15 +1151,14 @@ class SettingsWindow:
             def status(t):
                 self.win.after(0, lambda: self.fb_status.configure(text=t))
             try:
-                import requests
+                from . import nethttp
                 from . import __version__
                 status("Sending…")
-                r = requests.post(self.FEEDBACK_URL, data={
+                nethttp.post_json(self.FEEDBACK_URL, data={
                     "message": msg,
                     "email": self.fb_email.get().strip(),
                     "_subject": f"EchoQuill feedback (v{__version__})",
                 }, headers={"Accept": "application/json"}, timeout=15)
-                r.raise_for_status()
                 status("Sent — thank you! 💙")
                 self.win.after(0, lambda: self.fb_text.delete("1.0", "end"))
             except Exception:
@@ -1769,7 +1777,7 @@ class SettingsWindow:
                 except Exception:
                     pass
             try:
-                import requests
+                from . import nethttp
                 ollama_native = base.endswith("/api") or (
                     "ollama.com" in base and not base.endswith("/v1"))
                 if ollama_native:
@@ -1779,9 +1787,8 @@ class SettingsWindow:
                     for url, kind in ((root + "/api/tags", "tags"),
                                       (root + "/v1/models", "models")):
                         try:
-                            r = requests.get(url, headers=hdr, timeout=30)
-                            r.raise_for_status()
-                            data = r.json()
+                            data = nethttp.get_json(url, headers=hdr,
+                                                    timeout=30)
                             if kind == "tags":
                                 ids = sorted({m.get("name") for m in
                                               (data.get("models") or [])
@@ -1802,9 +1809,8 @@ class SettingsWindow:
                                "anthropic-version": "2023-06-01"}
                     else:
                         hdr = {"Authorization": f"Bearer {key}"}
-                    r = requests.get(base + "/models", headers=hdr, timeout=30)
-                    r.raise_for_status()
-                    data = r.json()
+                    data = nethttp.get_json(base + "/models", headers=hdr,
+                                            timeout=30)
                     items = data.get("data") or data.get("models") or []
                     ids = sorted({m.get("id") for m in items if m.get("id")})
                 if ids:

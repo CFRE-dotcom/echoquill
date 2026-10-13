@@ -7,17 +7,14 @@ things into it afterwards. Assignments are keyed by the clip's text, matching
 how favorites.py identifies clips.
 """
 
-import json
-
-from .config import app_data_dir
+from .config import app_data_dir, atomic_write_json, read_json_safe
 
 PATH = app_data_dir() / "folders.json"
 
 
 def _load() -> dict:
     try:
-        with open(PATH, "r", encoding="utf-8") as f:
-            d = json.load(f)
+        d = read_json_safe(PATH)
         if isinstance(d, dict):
             d.setdefault("names", [])
             d.setdefault("map", {})
@@ -29,8 +26,7 @@ def _load() -> dict:
 
 def _save(d: dict):
     try:
-        with open(PATH, "w", encoding="utf-8") as f:
-            json.dump(d, f, indent=1, ensure_ascii=False)
+        atomic_write_json(PATH, d)
     except Exception:
         pass
 

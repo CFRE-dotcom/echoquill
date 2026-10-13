@@ -93,16 +93,14 @@ def sign_in(cfg: dict, status_cb=lambda s: None) -> dict:
         raise RuntimeError("Timed out waiting for the sign-in to finish.")
 
     status_cb("Finishing sign-in…")
-    import requests
-    resp = requests.post(token_url, data={
+    from . import nethttp
+    tok = nethttp.post_json(token_url, data={
         "grant_type": "authorization_code",
         "code": _CallbackHandler.code,
         "redirect_uri": REDIRECT_URI,
         "client_id": client_id,
         "code_verifier": verifier,
     }, timeout=30)
-    resp.raise_for_status()
-    tok = resp.json()
     tok["obtained_at"] = time.time()
     return tok
 
@@ -118,14 +116,12 @@ def get_access_token(cfg: dict, save_cb=None) -> str:
         refresh = tok.get("refresh_token")
         if refresh:
             try:
-                import requests
-                resp = requests.post(cfg.get("ai_oauth_token_url", ""), data={
+                from . import nethttp
+                new = nethttp.post_json(cfg.get("ai_oauth_token_url", ""), data={
                     "grant_type": "refresh_token",
                     "refresh_token": refresh,
                     "client_id": cfg.get("ai_oauth_client_id", ""),
                 }, timeout=30)
-                resp.raise_for_status()
-                new = resp.json()
                 new.setdefault("refresh_token", refresh)
                 new["obtained_at"] = time.time()
                 cfg["ai_oauth_tokens"] = new

@@ -161,6 +161,10 @@ DEFAULTS = {
     "language": "auto",
     "yt_cookies_browser": "",
     "yt_cookies_file": "",   # path to an exported cookies.txt (most reliable for YouTube)
+    # yt-dlp OVERWRITES whatever cookiefile it is handed, which silently wipes
+    # the user's export. We keep the user's chosen path here as the pristine
+    # SOURCE and feed yt-dlp a throwaway copy instead. "" = not set yet.
+    "yt_cookies_file_src": "",
     "custom_prompts": [],
     "elevenlabs_api_key": "",
     "tts_voice_id": "",
@@ -335,14 +339,47 @@ def _kr_get(name: str) -> str:
         return ""
 
 
+def atomic_write_json(path, obj) -> None:
+    """Write JSON so a crash (or os._exit) mid-write can't truncate the file.
+    We write a temp file in the same dir, fsync it, keep a .bak of the previous
+    good copy, then os.replace() into place (atomic on Windows/NTFS)."""
+    path = str(path)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+        try:
+            f.flush()
+            os.fsync(f.fileno())
+        except Exception:
+            pass
+    try:
+        if os.path.exists(path):
+            import shutil
+            shutil.copy2(path, path + ".bak")
+    except Exception:
+        pass
+    os.replace(tmp, path)
+
+
+def read_json_safe(path):
+    """Read JSON, falling back to the .bak if the main file is missing or
+    corrupt (e.g. truncated by a hard exit). Returns None if both fail."""
+    for p in (str(path), str(path) + ".bak"):
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception:
+            continue
+    return None
+
+
 def load() -> dict:
     cfg = dict(DEFAULTS)
     try:
-        if CONFIG_PATH.exists():
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-            if isinstance(saved, dict):
-                cfg.update(saved)
+        saved = read_json_safe(CONFIG_PATH)
+        if isinstance(saved, dict):
+            cfg.update(saved)
     except Exception:
         pass  # fall back to defaults on any corruption
     for k in _SECRET_KEYS:
@@ -375,7 +412,6 @@ def save(cfg: dict) -> None:
                 out[k] = KEYRING_MARK if val else ""
             else:
                 out[k] = _encrypt_key(val)
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-            json.dump(out, f, indent=2, ensure_ascii=False)
+        atomic_write_json(CONFIG_PATH, out)
     except Exception:
         pass

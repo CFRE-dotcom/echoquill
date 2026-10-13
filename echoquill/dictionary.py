@@ -7,11 +7,10 @@
 Stored locally in %APPDATA%\\EchoQuill\\dictionary.json - never uploaded.
 """
 
-import json
 import re
 from collections import Counter
 
-from .config import app_data_dir
+from .config import app_data_dir, atomic_write_json, read_json_safe
 
 DICT_PATH = app_data_dir() / "dictionary.json"
 
@@ -26,9 +25,8 @@ class Dictionary:
 
     def load(self):
         try:
-            if DICT_PATH.exists():
-                with open(DICT_PATH, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+            data = read_json_safe(DICT_PATH)
+            if isinstance(data, dict):
                 self.replacements = data.get("replacements", {})
                 self._correction_counts = Counter(data.get("corrections", {}))
         except Exception:
@@ -36,14 +34,10 @@ class Dictionary:
 
     def save(self):
         try:
-            with open(DICT_PATH, "w", encoding="utf-8") as f:
-                json.dump(
-                    {
-                        "replacements": self.replacements,
-                        "corrections": dict(self._correction_counts),
-                    },
-                    f, indent=2, ensure_ascii=False,
-                )
+            atomic_write_json(DICT_PATH, {
+                "replacements": self.replacements,
+                "corrections": dict(self._correction_counts),
+            })
         except Exception:
             pass
 

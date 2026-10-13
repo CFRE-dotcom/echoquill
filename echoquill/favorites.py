@@ -1,9 +1,8 @@
 """Pro: pin your best clips to a Favorites list (up to 50)."""
 
-import json
 import time
 
-from .config import app_data_dir
+from .config import app_data_dir, atomic_write_json, read_json_safe
 
 FAV_PATH = app_data_dir() / "favorites.json"
 MAX_FAVS = 50
@@ -11,8 +10,7 @@ MAX_FAVS = 50
 
 def _load() -> list:
     try:
-        with open(FAV_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = read_json_safe(FAV_PATH)
         return data if isinstance(data, list) else []
     except Exception:
         return []
@@ -20,8 +18,7 @@ def _load() -> list:
 
 def _save(items: list):
     try:
-        with open(FAV_PATH, "w", encoding="utf-8") as f:
-            json.dump(items[:MAX_FAVS], f, indent=1, ensure_ascii=False)
+        atomic_write_json(FAV_PATH, items[:MAX_FAVS])
     except Exception:
         pass
 

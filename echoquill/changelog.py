@@ -273,6 +273,17 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.28.0  (2026-10-13)
+    Reliability + YouTube update - brings Free in line with the shared engine fixes from Pro.
+    - YOUTUBE "page needs to be reloaded" / "sign in to confirm you're not a bot" FIXED: the video engine (yt-dlp) now self-updates from the NIGHTLY channel (where YouTube fixes land first) and hot-reloads in-process, and EchoQuill auto-installs the Deno JavaScript runtime YouTube now requires to solve its challenge - no reboot, no rebuild needed.
+    - YOUR COOKIES NO LONGER DISAPPEAR: yt-dlp used to overwrite (and wipe) the cookies.txt it was handed. EchoQuill now keeps your pasted cookies as a protected master copy and feeds the engine a throwaway duplicate, so what you saved stays saved.
+    - SILENT / MUSIC-ONLY CLIPS no longer crash with "tuple index out of range": transcription falls back automatically when the voice-activity filter finds no speech, and finishes cleanly.
+    - SETTINGS, HISTORY, DICTIONARY, FAVORITES & FOLDERS survive a crash or forced exit: every settings/data file is now written atomically with a .bak fallback, so an interrupted save can't blank your configuration or wipe your history.
+    - AI ENHANCEMENT & UPDATES are immune to the video engine: all network calls now use Python's built-in HTTP instead of a library yt-dlp patches, which was intermittently breaking AI requests once a transcription had run.
+    - DESKTOP SHORTCUT is re-created on every install/update with the current version badge - an update can no longer leave you without a working shortcut, and the installer version now comes straight from version.txt so it can't drift.
+    - Downloads skip the ffmpeg-search crash (WinError 448) caused by unreadable folders on PATH.
+
+
 v1.26.0  (2026-08-13)
     Massive reliability + UI update, bringing Free up to date with the shared engine improvements.
     - DOWNLOADS ARE FAR MORE ROBUST: audio and video downloads now resume the .part on a drop, retry hard (20x + fragment retries), transfer in 10 MB chunks, and use a 60s socket timeout - so a flaky connection or SSL blip no longer kills a download. Orphaned .part files are cleaned up.
