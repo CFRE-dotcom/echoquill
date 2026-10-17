@@ -141,6 +141,17 @@ class Recorder:
                 return np.zeros(0, dtype=np.float32)
             return np.concatenate(self._chunks, axis=0).flatten().astype(np.float32)
 
+    def cut(self) -> np.ndarray:
+        """Return everything recorded so far and clear the buffer WITHOUT
+        stopping the stream. Used to finalize a sentence on a dictation pause
+        while the mic keeps running for the next sentence."""
+        with self._lock:
+            if not self._chunks:
+                return np.zeros(0, dtype=np.float32)
+            audio = np.concatenate(self._chunks, axis=0).flatten()
+            self._chunks = []
+        return audio.astype(np.float32)
+
     def stop(self) -> np.ndarray:
         """Stop recording (after the tail window) and return mono float32 audio."""
         if not self._recording:

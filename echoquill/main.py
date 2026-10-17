@@ -33,6 +33,7 @@ class App:
         self.recorder = None
         self._record_started_at = 0.0
         self._busy = False
+        self._seg_lock = threading.Lock()   # serialize pause-segment vs final transcribe
         self._last_text = ""
         self._mode = "dictate"          # dictate | command | write
         self._write_selection = ""
@@ -337,6 +338,70 @@ class App:
                 self.events.put(("overlay", "live", hint))
                 threading.Thread(target=self._autostop,
                                  args=("toggle_write",), daemon=True).start()
+            elif mode == "dictate" and self.cfg.get("dictation_segment_on_pause", True):
+                threading.Thread(target=self._dictation_segmenter,
+                                 daemon=True).start()
+
+    def _dictation_segmenter(self):
+        """While dictating, finalize a sentence after a silence pause WITHOUT
+        stopping the mic, so the user can keep talking. Pressing the pill /
+        hotkey still ends dictation fully (via _finish). Each pause-segment is
+        transcribed, cleaned, punctuated, and inserted on its own."""
+        rec = self.recorder
+        try:
+            pause = float(self.cfg.get("dictation_pause_seconds", 3.0))
+        except (TypeError, ValueError):
+            pause = 3.0
+        if pause <= 0:
+            return
+        spoke = False
+        last_loud = time.time()
+        while rec and rec.recording and self._mode == "dictate" and not self._busy:
+            time.sleep(0.1)
+            lvl = getattr(rec, "level", 0.0)
+            if lvl > 0.10:
+                spoke = True
+                last_loud = time.time()
+            elif spoke and (time.time() - last_loud) >= pause:
+                with self._seg_lock:
+                    if not (rec and rec.recording) or self._busy:
+                        return
+                    seg = rec.cut()
+                    seg_dur = len(seg) / 16000.0   # SAMPLE_RATE
+                    try:
+                        raw = self.transcriber.transcribe(seg, self.cfg["language"])
+                    except Exception:
+                        raw = ""
+                    if raw and raw.strip():
+                        self._emit_dictation(raw, seg_dur, overlay=False)
+                spoke = False
+                last_loud = time.time()
+
+    def _emit_dictation(self, raw: str, duration: float, overlay: bool = True):
+        """Clean -> punctuate -> insert one dictation result. Shared by the
+        final _finish and the pause-segmenter."""
+        text = cleanup.process(raw, self.cfg, self.dictionary)
+        if not text:
+            if overlay:
+                self.events.put(("overlay", "result", "(heard nothing)"))
+            return
+        insert_text = (cleanup.finalize_dictation(text)
+                       if self.cfg.get("auto_end_punctuation", True)
+                       else text)
+        injector.insert(insert_text, self.cfg["insertion_mode"])
+        if (self.cfg.get("always_copy", True)
+                and self.cfg["insertion_mode"] != "clipboard"):
+            try:
+                import pyperclip
+                pyperclip.copy(insert_text)  # safety net: re-pasteable
+            except Exception:
+                pass
+        history.add(insert_text.rstrip(" "), duration, self.cfg)
+        self._last_text = insert_text
+        if overlay:
+            shown = ("Copied to clipboard: " + insert_text
+                     if self.cfg["insertion_mode"] == "clipboard" else insert_text)
+            self.events.put(("overlay", "result", shown))
 
     def _autostop(self, fire_event):
         """Auto-finish ~1.3s after the user stops talking (command/write modes)."""
@@ -444,7 +509,10 @@ class App:
                 feedback = commands.execute(raw)
                 self.events.put(("overlay", "result", "🎧  " + feedback))
                 return
-            raw = self.transcriber.transcribe(audio, self.cfg["language"])
+            # Wait for any in-flight pause-segment to finish inserting first,
+            # so the final text lands after it (keeps sentence order correct).
+            with self._seg_lock:
+                raw = self.transcriber.transcribe(audio, self.cfg["language"])
             prefix = self.cfg.get("command_prefix", "computer")
             if (self.cfg.get("prefix_commands", True) and prefix
                     and raw.strip().lower().startswith(prefix.lower())):
@@ -456,23 +524,8 @@ class App:
             if self._mode == "write":
                 self._finish_write(raw)
                 return
-            text = cleanup.process(raw, self.cfg, self.dictionary)
-            if text:
-                injector.insert(text, self.cfg["insertion_mode"])
-                if (self.cfg.get("always_copy", True)
-                        and self.cfg["insertion_mode"] != "clipboard"):
-                    try:
-                        import pyperclip
-                        pyperclip.copy(text)  # safety net: always re-pasteable
-                    except Exception:
-                        pass
-                history.add(text, duration, self.cfg)
-                self._last_text = text
-                shown = ("Copied to clipboard: " + text
-                         if self.cfg["insertion_mode"] == "clipboard" else text)
-                self.events.put(("overlay", "result", shown))
-            else:
-                self.events.put(("overlay", "result", "(heard nothing)"))
+            # Default on: end the utterance with punctuation + a trailing space.
+            self._emit_dictation(raw, duration, overlay=True)
         except Exception as e:
             self.events.put(("overlay", "result", f"Error: {e}"))
         finally:

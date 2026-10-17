@@ -186,6 +186,14 @@ DEFAULTS = {
     # Local cleanup (always offline)
     "local_cleanup": True,        # capitalization, spacing, sentence punctuation
     "spoken_punctuation": True,   # say "period", "comma", "new line" to insert them
+    # End every dictation with punctuation + a trailing space, so stopping
+    # mid-thought leaves a clean break and the next dictation starts after a space.
+    "auto_end_punctuation": True,
+    # During dictation, a pause this long finalizes the sentence (punctuation +
+    # space) WITHOUT stopping the mic, so you can keep talking. The pill/hotkey
+    # still ends dictation fully.
+    "dictation_segment_on_pause": True,
+    "dictation_pause_seconds": 3.0,
     # Custom dictionary + learning from corrections
     "dictionary_enabled": True,
     "learn_corrections": True,    # suggest dictionary entries from repeated corrections

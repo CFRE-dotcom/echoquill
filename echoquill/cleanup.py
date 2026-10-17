@@ -138,6 +138,30 @@ def ai_enhance(text: str, cfg: dict) -> str:
     return out if (ok and out) else text  # never lose the user's words
 
 
+def finalize_dictation(text: str, add_space: bool = True) -> str:
+    """Live-dictation finisher. Guarantee the utterance ends with some
+    punctuation and a trailing space, so that stopping mid-thought (either by
+    pressing stop or after a silence timeout) still leaves a clean sentence
+    break, and the NEXT dictation starts after a space instead of butting up
+    against the last word.
+
+    - If the text doesn't already end with .!?,;: it gets a period.
+    - A single trailing space is then added (unless it ends with a newline,
+      e.g. 'new paragraph').
+    Opening brackets/quotes are never punctuated after.
+    """
+    if not text:
+        return text
+    t = text.rstrip(" \t")
+    if not t:
+        return text
+    if t[-1] not in ".!?,;:\n" and t[-1] not in "([{\"'":
+        t += "."
+    if add_space and not t.endswith("\n"):
+        t += " "
+    return t
+
+
 def process(text: str, cfg: dict, dictionary=None) -> str:
     """Full pipeline: dictionary -> spoken punctuation -> local rules -> AI."""
     if not text:

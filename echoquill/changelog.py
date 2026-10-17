@@ -273,6 +273,11 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.29.0  (2026-10-17)
+    Dictation now punctuates and segments itself. Two things, both on by default:
+    (1) Every dictation ends with punctuation + a trailing space, so stopping mid-thought leaves a clean break and the next dictation starts after a space instead of jamming into the last word. (new "auto_end_punctuation" setting)
+    (2) While you're dictating, pausing for 3 seconds finalizes the current sentence - punctuation and space dropped in - WITHOUT stopping the mic, so you can keep talking and it starts a fresh sentence. Clicking the black pill (or the hotkey) still ends dictation completely. Pause length is adjustable ("dictation_pause_seconds"); turn the behavior off with "dictation_segment_on_pause".
+
 v1.28.0  (2026-10-13)
     Reliability + YouTube update - brings Free in line with the shared engine fixes from Pro.
     - YOUTUBE "page needs to be reloaded" / "sign in to confirm you're not a bot" FIXED: the video engine (yt-dlp) now self-updates from the NIGHTLY channel (where YouTube fixes land first) and hot-reloads in-process, and EchoQuill auto-installs the Deno JavaScript runtime YouTube now requires to solve its challenge - no reboot, no rebuild needed.
