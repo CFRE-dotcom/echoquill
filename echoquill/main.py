@@ -377,11 +377,7 @@ class App:
                     if raw and raw.strip():
                         prepped = self._prep_dictation(raw)
                         if prepped:
-                            self._dict_cache.append(prepped)
-                            self.events.put((
-                                "overlay", "live",
-                                f"🎧 {len(self._dict_cache)} sentence(s) ready "
-                                "— keep talking; press the pill to drop it in"))
+                            self._dict_cache.append(prepped)  # hold silently
                 spoke = False
                 last_loud = time.time()
 
