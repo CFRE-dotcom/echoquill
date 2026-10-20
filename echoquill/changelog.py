@@ -273,7 +273,7 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
-v1.31.0  (2026-10-20)
+v1.31.1  (2026-10-20)
     Dictation pause now HOLDS instead of typing mid-sentence. When you pause ~3 seconds, EchoQuill still transcribes and punctuates that sentence in the background, but it now caches it quietly instead of typing it. Nothing is shown and nothing is typed until you press the pill to stop - then the whole thing drops in at once, cleanly punctuated. Cancel discards the held text.
 
 v1.30.0  (2026-10-19)
