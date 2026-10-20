@@ -363,6 +363,24 @@ class SettingsWindow:
             "\nTip: it's also one right-click away — right-click the mic pill "
             "→ Transcribe video / URL.")).pack(anchor="w")
 
+        # ---------------- where files are saved ----------------
+        ttk.Label(f, style="Section.TLabel",
+                  text="WHERE FILES ARE SAVED").pack(anchor="w", pady=(16, 4))
+        ttk.Label(f, style="Dim.TLabel", wraplength=470, text=(
+            "The EchoQuill folder holds every saved file — transcripts, "
+            "downloaded video/audio and narrations. Point it at any folder on "
+            "any drive (e.g. E:\\EchoQuill) to keep big files off your C: drive. "
+            "New files go to the new location; files already saved are not moved "
+            "for you.")).pack(anchor="w")
+        _ofrow = ttk.Frame(f); _ofrow.pack(fill="x", pady=(4, 2))
+        ttk.Button(_ofrow, text="Browse…",
+                   command=self._choose_output_folder).pack(side="right")
+        ttk.Button(_ofrow, text="Reset to default",
+                   command=self._default_output_folder).pack(side="right", padx=6)
+        self._output_ent = ttk.Entry(_ofrow)
+        self._output_ent.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self._set_output_entry()
+
         ttk.Label(f, style="Section.TLabel",
                   text="SIGN IN (YouTube bot-checks, Skool & member-only videos)"
                   ).pack(anchor="w", pady=(16, 4))
@@ -539,6 +557,36 @@ class SettingsWindow:
     def _ra_listen_phone(self):
         from . import phone_share
         phone_share.open_phone_window(self.win, self.cfg)
+
+    def _set_output_entry(self):
+        from .media_gui import base_dir
+        self._output_ent.configure(state="normal")
+        self._output_ent.delete(0, "end")
+        self._output_ent.insert(0, base_dir(self.cfg))
+        self._output_ent.configure(state="readonly")
+
+    def _choose_output_folder(self):
+        from tkinter import filedialog
+        from .media_gui import base_dir
+        d = filedialog.askdirectory(
+            parent=self.win, initialdir=base_dir(self.cfg),
+            title="Choose where EchoQuill saves files (any folder, any drive)")
+        if not d:
+            return
+        self.cfg["output_dir"] = d
+        try:
+            cfgmod.save(self.cfg)
+        except Exception:
+            pass
+        self._set_output_entry()
+
+    def _default_output_folder(self):
+        self.cfg["output_dir"] = ""
+        try:
+            cfgmod.save(self.cfg)
+        except Exception:
+            pass
+        self._set_output_entry()
 
     def _ra_set_folder_entry(self):
         from .media_gui import narration_dir

@@ -273,6 +273,9 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.30.0  (2026-10-19)
+    Settings -> Transcription -> "Where files are saved". Browse to any folder on any drive (e.g. E:\EchoQuill) for where EchoQuill saves transcripts, downloaded video/audio and narrations - to keep large files off your C: drive. New files go to the new location; files already saved are not moved automatically. "Reset to default" returns to Documents\EchoQuill.
+
 v1.29.0  (2026-10-17)
     Dictation now punctuates and segments itself. Two things, both on by default:
     (1) Every dictation ends with punctuation + a trailing space, so stopping mid-thought leaves a clean break and the next dictation starts after a space instead of jamming into the last word. (new "auto_end_punctuation" setting)
