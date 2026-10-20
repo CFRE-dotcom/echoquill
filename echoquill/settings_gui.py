@@ -981,11 +981,15 @@ class SettingsWindow:
         tr = ttk.Frame(f); tr.pack(fill="x", pady=(2, 2))
         self.tone_app_var = tk.StringVar()
         self.tone_prompt_var = tk.StringVar()
-        ttk.Entry(tr, textvariable=self.tone_app_var, width=16).pack(side="left")
-        ttk.Entry(tr, textvariable=self.tone_prompt_var, width=34).pack(side="left", padx=6, fill="x", expand=True)
+        ttk.Combobox(tr, textvariable=self.tone_app_var, width=18,
+                     values=self._apps_for_picker()).pack(side="left")
+        ttk.Combobox(tr, textvariable=self.tone_prompt_var, width=40,
+                     values=self.TONE_PRESETS).pack(
+                     side="left", padx=6, fill="x", expand=True)
         ttk.Button(tr, text="Add", command=self._tone_add).pack(side="left")
         ttk.Label(f, style="Dim.TLabel",
-                  text="app (slack.exe)          instruction (Casual tone, lowercase ok)"
+                  text="Pick an app and a tone from the lists (apps you have "
+                       "open are included) — or type your own — then Add."
                   ).pack(anchor="w")
         ttk.Button(f, text="Remove selected", command=self._tone_remove).pack(anchor="w", pady=(4, 6))
 
@@ -1892,6 +1896,51 @@ class SettingsWindow:
             except Exception as e:
                 status(f"{e}")
         threading.Thread(target=run, daemon=True).start()
+
+    TONE_PRESETS = [
+        "Professional, polished business tone. Fix grammar and punctuation. No slang.",
+        "Formal business email tone. Full sentences, courteous, no contractions.",
+        "Casual, friendly tone. Lowercase and contractions are fine.",
+        "Short, casual text-message style.",
+        "Make it concise and direct. Cut filler words.",
+        "Format as short bullet points.",
+        "Technical and precise. Keep code terms and jargon exact.",
+        "Clear and simple. Plain English, short sentences.",
+        "Warm and polite — friendly but respectful.",
+        "Keep my words as-is; only fix obvious typos.",
+    ]
+
+    _COMMON_APPS = [
+        "outlook.exe", "winword.exe", "excel.exe", "powerpnt.exe", "onenote.exe",
+        "slack.exe", "ms-teams.exe", "teams.exe", "discord.exe", "zoom.exe",
+        "chrome.exe", "msedge.exe", "firefox.exe", "brave.exe",
+        "notepad.exe", "notepad++.exe", "code.exe", "sublime_text.exe",
+        "thunderbird.exe", "telegram.exe", "whatsapp.exe", "signal.exe",
+        "obsidian.exe", "acrobat.exe", "acrord32.exe",
+    ]
+
+    def _apps_for_picker(self):
+        """Common apps + whatever the user currently has running, minus noise."""
+        found = set()
+        try:
+            import psutil
+            skip = {
+                "svchost.exe", "system", "registry", "smss.exe", "csrss.exe",
+                "wininit.exe", "services.exe", "lsass.exe", "winlogon.exe",
+                "fontdrvhost.exe", "dwm.exe", "runtimebroker.exe", "taskhostw.exe",
+                "sihost.exe", "ctfmon.exe", "searchhost.exe", "conhost.exe",
+                "dllhost.exe", "backgroundtaskhost.exe", "startmenuexperiencehost.exe",
+                "textinputhost.exe", "shellexperiencehost.exe", "widgets.exe",
+                "python.exe", "pythonw.exe", "echoquill.exe", "applicationframehost.exe",
+                "msmpeng.exe", "securityhealthservice.exe", "audiodg.exe",
+            }
+            for p in psutil.process_iter(["name"]):
+                n = (p.info.get("name") or "").lower()
+                if n.endswith(".exe") and n not in skip:
+                    found.add(n)
+        except Exception:
+            pass
+        return sorted(set(self._COMMON_APPS) | found)
 
     def _refresh_tones(self):
         self.tone_list.delete(0, "end")

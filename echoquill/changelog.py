@@ -273,6 +273,9 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.32.0  (2026-10-20)
+    Per-app tone is now pick-from-a-list. Settings -> AI Enhancement -> Per-app tone: the two boxes are now dropdowns. The app box lists common programs PLUS whatever you have open right now, and the instruction box offers ready-made tones (Professional, Formal email, Casual, Text-message, Concise, Bullet points, Technical, and more). Both are still editable - type your own if you want. Reminder: per-app tone needs AI Enhancement on, and it matches by program, so browser tabs all count as your browser.
+
 v1.31.1  (2026-10-20)
     Dictation pause now HOLDS instead of typing mid-sentence. When you pause ~3 seconds, EchoQuill still transcribes and punctuates that sentence in the background, but it now caches it quietly instead of typing it. Nothing is shown and nothing is typed until you press the pill to stop - then the whole thing drops in at once, cleanly punctuated. Cancel discards the held text.
 
