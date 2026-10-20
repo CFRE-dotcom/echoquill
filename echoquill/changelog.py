@@ -273,6 +273,9 @@ v2.0.0  (2026-07-06)
 ECHOQUILL FREE
 ============================================================
 
+v1.31.0  (2026-10-20)
+    Dictation pause now HOLDS instead of typing mid-sentence. When you pause ~3 seconds, EchoQuill still transcribes and punctuates that sentence in the background, but it now caches it quietly (the pill shows "N sentence(s) ready") instead of typing it. Nothing is typed until you press the pill to stop - then the whole thing drops in at once, cleanly punctuated. Cancel discards the held text.
+
 v1.30.0  (2026-10-19)
     Settings -> Transcription -> "Where files are saved". Browse to any folder on any drive (e.g. E:\EchoQuill) for where EchoQuill saves transcripts, downloaded video/audio and narrations - to keep large files off your C: drive. New files go to the new location; files already saved are not moved automatically. "Reset to default" returns to Documents\EchoQuill.
 
